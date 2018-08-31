@@ -1,21 +1,27 @@
 {
-    "name": "micseres/php_server",
-    "description": "Microservice resolver php server",
-    "type": "project",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Andrii Yakovlev",
-            "email": "yawa20@gmail.com"
-        },
-        {
-            "name": "Victor Pavlov",
-            "email": "zogxray@gmail.com"
-        }
-    ],
-    "minimum-stability": "stable",
-    "require": {
-        "php": "^7.2",
-        "ext-swoole": "*"
+  "name": "micseres/php_server",
+  "description": "Microservice resolver php server",
+  "type": "project",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Micseres\\PhpServer\\": "src"
     }
+  },
+  "authors": [
+    {
+      "name": "Andrii Yakovlev",
+      "email": "yawa20@gmail.com"
+    },
+    {
+      "name": "Victor Pavlov",
+      "email": "zogxray@gmail.com"
+    }
+  ],
+  "minimum-stability": "stable",
+  "require": {
+    "php": "^7.2",
+    "ext-swoole": "*",
+    "symfony/dotenv": "^4.1"
+  }
 }
