@@ -1,0 +1,14 @@
+{
+    "name": "micseres/php_server",
+    "description": "Microservice resolver php server",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Andrii Yakovlev",
+            "email": "yawa20@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
