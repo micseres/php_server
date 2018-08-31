@@ -7,8 +7,15 @@
         {
             "name": "Andrii Yakovlev",
             "email": "yawa20@gmail.com"
+        },
+        {
+            "name": "Victor Pavlov",
+            "email": "zogxray@gmail.com"
         }
     ],
     "minimum-stability": "stable",
-    "require": {}
+    "require": {
+        "php": "^7.2",
+        "ext-swoole": "*"
+    }
 }
