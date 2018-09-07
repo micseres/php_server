@@ -6,7 +6,7 @@
 
 namespace Micseres\PhpServer\System;
 
-use Micseres\PhpServer\Router;
+use Micseres\PhpServer\Router\Router;
 
 /**
  * Class Controller
@@ -34,18 +34,17 @@ class Controller
      * @uses warAction
      * @uses helpAction
      * @param string $action
-     * @param array  $params
      *
      * @return string
      */
-    public function dispatch(string $action, array $params = []): string
+    public function dispatch(string $action): string
     {
         $methodName = $action.'Action';
-        if (!method_exists($this,$methodName)) {
-            throw new \RuntimeException("action $action not found");
+        if (!method_exists($this, $methodName)) {
+            throw new \RuntimeException("'$action' command not found, try help for help");
         }
 
-        return ($this->$methodName($params))."\n";
+        return ($this->$methodName())."\n";
     }
 
     /**

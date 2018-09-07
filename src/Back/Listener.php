@@ -6,7 +6,10 @@
 
 namespace Micseres\PhpServer\Back;
 
-use Micseres\PhpServer\Router;
+use Micseres\PhpServer\ConnectionPool\BackConnection;
+use Micseres\PhpServer\ConnectionPool\BackConnectionPool;
+use Micseres\PhpServer\Response\ErrorResponse;
+use Micseres\PhpServer\Router\Router;
 
 /**
  * Class FrontController
@@ -14,46 +17,153 @@ use Micseres\PhpServer\Router;
  */
 class Listener
 {
+    private $backSocket = '/var/run/micseres/back.sock';
+
+    /** @var \swoole_server  */
+    private $server;
+
+    /** @var BackConnectionPool  */
+    private $pool;
+
+    /** @var \swoole_server_port */
+    private $backListener;
+
     /** @var Router  */
     private $router;
 
-    /**
-     * Listener constructor.
-     *
-     * @param Router     $router
-     * @param Controller $controller
-     */
-    public function __construct(Router $router, Controller $controller)
-    {
-        $this->router = $router;
+    /** @var Controller  */
+    private $controller;
+
+    public function __construct(
+        \swoole_server $server,
+        BackConnectionPool $pool,
+        Router $router,
+        Controller $controller
+    ) {
         $this->controller = $controller;
+        $this->server = $server;
+        $this->pool = $pool;
+        $this->router = $router;
+
+        $this->init();
     }
 
-    public function onConnect(\swoole_server $server, int $fd, int $reactorId)
+    private function init()
     {
-        $message = "Welcome to the back socket, your id is {$fd}\n";
-        $message .= "Please, send me message, what route you want to listen\n";
-        $message .= "write {action: 'register', params:{route: 'route'}} to register new route\n";
-        $server->send($fd, $message);
+        $this->backListener = $this->server->addListener($this->backSocket, 0, SWOOLE_UNIX_STREAM);
+        $this->backListener->on('connect', [$this, 'onConnect']);
+        $this->backListener->on('receive', [$this, 'onReceive']);
+        $this->backListener->on('close', [$this, 'onClose']);
     }
 
-    public function onReceive(\swoole_server $server, int $fd, int $reactorId, string $data)
+    /**
+     * @param \swoole_server $server
+     * @param int            $connectionId
+     * @param int            $fromId
+     */
+    public function onConnect(\swoole_server $server, int $connectionId, int $fromId)
     {
-        $request = json_decode($data, true);
-        var_dump($request);
-        $request['params'] = $request['params']??[];
+        $connection = new BackConnection($server, $connectionId);
+        $this->pool->addConnection($connection);
 
-        if (empty($request['action'])) {
-            $server->send($fd, "action is mandatory\n");
+        $helloMessage = "Hello\n";
+        $this->server->send($connectionId, $helloMessage);
+    }
 
+    /**
+     * @param \swoole_server $server
+     * @param int            $connectionId
+     * @param int            $reactorId
+     */
+    public function onClose(\swoole_server $server, int $connectionId, int $reactorId)
+    {
+        /** @var BackConnection $connection */
+        $connection = $this->pool->getConnection($connectionId);
+
+        //send fail message to current task
+        if ($connection->hasOpenTask()) {
+            $task = $connection->getCurrentTask();
+            $response = new ErrorResponse($connection->getCurrentTask(), "microserver closed connection");
+            $server->send($task->getClientId(), $response);
+        }
+
+        $route = $this->router->getRouteByConnection($connection);
+        if (null !== $route) {
+            $route->removeConnection($connection);
+
+            //if we have no more microservers on this route, sent error to client and destroy route
+            if ($route->isEmpty()) {
+                $this->router->unsetRoute($route->getPath());
+                foreach ($connection->getTasks() as $task) {
+                    $response = new ErrorResponse(
+                        $connection->getCurrentTask(),
+                        "microserver closed connection"
+                    );
+                    $server->send($task->getClientId(), $response);
+                }
+                //else if we have microservices - put tasks in they
+            } else {
+                foreach ($connection->getTasks() as $task) {
+                    $target = $route->getLeastLoadedConnection();
+                    $target->addTask($task);
+                }
+            }
+        }
+
+        $this->pool->removeConnection($connectionId);
+    }
+
+    /**
+     * @param \swoole_server $server
+     * @param int            $connectionId
+     * @param int            $reactor_id
+     * @param string         $data
+     */
+    public function onReceive(\swoole_server $server, int $connectionId, int $reactor_id, string $data)
+    {
+        if (!$this->pool->hasConnection($connectionId)) {
             return;
         }
-        try {
-            $data = $this->controller->dispatch($request['action'], $request['params'], $fd, $reactorId);
-        } catch (\RuntimeException $exception) {
-            $data = $exception->getMessage()."\n";
+        /** @var BackConnection $connection */
+        $connection = $this->pool->getConnection($connectionId);
+        if ($connection->hasOpenTask()) {
+            $task = $connection->getCurrentTask();
+            $this->server->send($task->getClientId(), $data);
+            $connection->startNext();
+            return;
+        }
+        $response = $this->handleCommandMessage($connection, $data);
+        $this->server->send($connectionId, $response);
+    }
+
+    /**
+     * @param BackConnection $connection
+     * @param string         $data
+     *
+     * @return      string
+     */
+    private function handleCommandMessage(BackConnection $connection, string $data)
+    {
+        $request = json_decode($data, true);
+        if (null === $request) {
+            $message = "Invalid JSON format message\n ";
+            $message .= 'try { "action": "help"} to help'."\n";
+
+            return $message;
+        }
+        $action = $request['action']??'';
+        $params = $request['params']??[];
+
+        if (empty($action)) {
+            return "Action is mandatory\n";
         }
 
-        $server->send($fd, $data);
+        try {
+            $data = $this->controller->dispatch($connection, $action, $params);
+        } catch (\RuntimeException $exception) {
+            $data = $exception->getMessage();
+        }
+
+        return $data."\n";
     }
 }

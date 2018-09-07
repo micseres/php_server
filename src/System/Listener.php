@@ -6,7 +6,7 @@
 
 namespace Micseres\PhpServer\System;
 
-use Micseres\PhpServer\Router;
+use Micseres\PhpServer\Task\Task;
 
 /**
  * Class Controller
@@ -14,40 +14,40 @@ use Micseres\PhpServer\Router;
  */
 class Listener
 {
-    /** @var Router  */
-    private $router;
+    /**
+     * @var \swoole_server
+     */
+    private $server;
 
-    /** @var Controller  */
+    /** @var Controller */
     private $controller;
 
-    /**
-     * Listener constructor.
-     *
-     * @param Router     $router
-     * @param Controller $controller
-     */
-    public function __construct(Router $router, Controller $controller)
+    public function __construct(\swoole_server $server, Controller $controller)
     {
-        $this->router = $router;
+        $this->server     = $server;
         $this->controller = $controller;
+        $server->on('connect', [$this, 'onConnect']);
+        $server->on('receive', [$this, 'onReceive']);
+        $server->on('task', [$this, 'onTask']);
+        $server->on('finish', [$this, 'onFinish']);
     }
 
-    public function onReceive(\swoole_server $server, int $fd, int $reactorId, string $data)
+    public function onReceive(\swoole_server $server, int $identifier, int $reactorId, string $data)
     {
-        $action = trim($data);
         try {
-            $data = $this->controller->dispatch($action);
+            $data     = trim($data);
+            $response = $this->controller->dispatch($data)."\n";
         } catch (\RuntimeException $exception) {
-            $data = $exception->getMessage()."\n";
+            $response = $exception->getMessage()."\n";
         }
 
-        $server->send($fd, $data);
+        $this->server->send($identifier, $response);
     }
 
-    public function onConnect(\swoole_server $server, int $fd, int $reactorId)
+    public function onConnect(\swoole_server $server, int $identifier, int $reactorId)
     {
         $helloMessage = "Microservice resolver\n";
         $helloMessage .= "version 0.0.0.alpha\n";
-        $server->send($fd, $helloMessage);
+        $server->send($identifier, $helloMessage);
     }
 }
