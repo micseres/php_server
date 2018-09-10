@@ -6,16 +6,13 @@
 
 namespace Micseres\PhpServer\Middleware;
 
-use Micseres\PhpServer\Request\RequestInterface;
-
 interface MiddlewareInterface
 {
     /**
-     * @param mixed                    $request
-     * @param MiddlewareInterface|null $middleware
+     * @param mixed    $request
+     * @param \Closure $next
      *
      * @return mixed
-     * @throws \InvalidArgumentException
      */
-    public function handle(RequestInterface $request, ?MiddlewareInterface $middleware);
+    public function handle($request, \Closure $next);
 }

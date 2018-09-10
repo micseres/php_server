@@ -8,4 +8,9 @@ namespace Micseres\PhpServer\Request;
 
 interface RequestInterface
 {
+    public function getAction(): string;
+
+    public function getParams(): array;
+
+    public function getClientId(): string;
 }

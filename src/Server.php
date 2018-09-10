@@ -9,6 +9,7 @@ namespace Micseres\PhpServer;
 use Micseres\PhpServer\Back;
 use Micseres\PhpServer\Front;
 use Micseres\PhpServer\ConnectionPool\BackConnectionPool;
+use Micseres\PhpServer\Middleware\ClosureBuilder;
 use Micseres\PhpServer\Router\Router;
 use Micseres\PhpServer\System;
 
@@ -40,7 +41,13 @@ class Server
         $backPool = new BackConnectionPool($server);
         $backController = new Back\Controller($router);
         $this->backListener = new Back\Listener($server, $backPool, $router, $backController);
-        $this->frontListener = new Front\Listener($server, $router);
+
+
+        $requestHandler = new Front\RequestHandler(new ClosureBuilder());
+        $requestHandler->addMiddleware(new Front\RequestHandler\Validation());
+        $requestHandler->addMiddleware(new Front\RequestHandler\Authorization());
+        $requestHandler->addMiddleware(new Front\RequestHandler\QueueTask($router));
+        $this->frontListener = new Front\Listener($server, $requestHandler);
 
         $server->start();
     }
