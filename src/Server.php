@@ -19,22 +19,19 @@ use Micseres\PhpServer\System;
  */
 class Server
 {
-
-    private $systemSocket = '/var/run/micseres/sys.sock';
-
     private $frontListener;
     private $backListener;
 
     /** @var System\Listener */
     private $systemListener;
 
+    /**
+     * @throws \Exception
+     */
     public function run()
     {
-
-        //todo: resolve this params via dotenv
-        $server = new \swoole_server($this->systemSocket, 0, SWOOLE_BASE, SWOOLE_UNIX_STREAM);
-//        $server->set(['task_worker_num'=>1]);
-
+        $server = $this->buildServer();
+//        $server->set(['task_worker_num'=>32]);
         $router = new Router();
         $systemController = new System\Controller($router);
         $this->systemListener = new System\Listener($server, $systemController);
@@ -50,5 +47,31 @@ class Server
         $this->frontListener = new Front\Listener($server, $requestHandler);
 
         $server->start();
+    }
+
+    /**
+     * @return \swoole_server
+     * @throws \Exception
+     */
+    private function buildServer()
+    {
+        $type = getenv('SOCKET_SYSTEM_TYPE');
+        if (null === $type || 'unix' === $type) {
+            $socket = getenv('SOCKET_SYSTEM_TYPE');
+            if (null === $socket) {
+                $socket = '/var/run/micseres/sys.sock';
+            }
+            return  new \swoole_server($socket, 0, SWOOLE_BASE, SWOOLE_UNIX_STREAM);
+        }
+
+        $host = getenv('SOCKET_SYSTEM_HOST');
+        if (null === $host) {
+            throw new \Exception("SOCKET_SYSTEM_HOST should be defined on tcp socket type");
+        }
+        $port = getenv('SOCKET_SYSTEM_PORT');
+        if (null === $port) {
+            throw new \Exception("SOCKET_SYSTEM_PORT should be defined on tcp socket type");
+        }
+        return  new \swoole_server($host, $port, SWOOLE_BASE, SWOOLE_TCP);
     }
 }

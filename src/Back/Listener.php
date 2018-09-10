@@ -17,8 +17,6 @@ use Micseres\PhpServer\Router\Router;
  */
 class Listener
 {
-    private $backSocket = '/var/run/micseres/back.sock';
-
     /** @var \swoole_server  */
     private $server;
 
@@ -34,6 +32,16 @@ class Listener
     /** @var Controller  */
     private $controller;
 
+    /**
+     * Listener constructor.
+     *
+     * @param \swoole_server     $server
+     * @param BackConnectionPool $pool
+     * @param Router             $router
+     * @param Controller         $controller
+     *
+     * @throws \Exception
+     */
     public function __construct(
         \swoole_server $server,
         BackConnectionPool $pool,
@@ -48,12 +56,44 @@ class Listener
         $this->init();
     }
 
+    /**
+     * @throws \Exception
+     */
     private function init()
     {
-        $this->backListener = $this->server->addListener($this->backSocket, 0, SWOOLE_UNIX_STREAM);
+        list($host, $port, $type) = $this->getConf();
+        $this->backListener = $this->server->addListener($host, $port, $type);
+
         $this->backListener->on('connect', [$this, 'onConnect']);
         $this->backListener->on('receive', [$this, 'onReceive']);
         $this->backListener->on('close', [$this, 'onClose']);
+    }
+
+    /**
+     * @return array
+     * @throws \Exception
+     */
+    private function getConf(): array
+    {
+        $type = getenv('SOCKET_BACK_TYPE');
+        if (null === $type || 'unix' === $type) {
+            $socket = getenv('SOCKET_BACK_FILE');
+            if (null === $socket) {
+                $socket = '/var/run/micseres/back.sock';
+            }
+            return  [$socket, 0, SWOOLE_UNIX_STREAM];
+        }
+
+        $host = getenv('SOCKET_BACK_HOST');
+        if (null === $host) {
+            throw new \Exception("SOCKET_SYSTEM_HOST should be defined on tcp socket type");
+        }
+        $port = getenv('SOCKET_BACK_PORT');
+        if (null === $port) {
+            throw new \Exception("SOCKET_SYSTEM_PORT should be defined on tcp socket type");
+        }
+
+        return [$host, $port, SWOOLE_TCP];
     }
 
     /**

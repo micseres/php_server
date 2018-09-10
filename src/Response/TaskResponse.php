@@ -19,7 +19,7 @@ class TaskResponse extends Response
     public function __construct(Task $task, string $message)
     {
         $this->taskId = $task->getId();
-        parent::__construct($message, self::STATUS__FAIL);
+        parent::__construct($message, self::STATUS__OK);
     }
 
     /**

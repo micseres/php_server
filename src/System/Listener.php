@@ -6,8 +6,6 @@
 
 namespace Micseres\PhpServer\System;
 
-use Micseres\PhpServer\Task\Task;
-
 /**
  * Class Controller
  * @package Micseres\PhpServer\System
@@ -28,8 +26,8 @@ class Listener
         $this->controller = $controller;
         $server->on('connect', [$this, 'onConnect']);
         $server->on('receive', [$this, 'onReceive']);
-        $server->on('task', [$this, 'onTask']);
-        $server->on('finish', [$this, 'onFinish']);
+//        $server->on('task', [$this, 'onTask']);
+//        $server->on('finish', [$this, 'onFinish']);
     }
 
     public function onReceive(\swoole_server $server, int $identifier, int $reactorId, string $data)
