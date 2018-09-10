@@ -31,4 +31,14 @@ interface TaskInterface
      * @return string
      */
     public function getStringParams(): string;
+
+    /**
+     * @return void
+     */
+    public function start();
+
+    /**
+     * @return float|null
+     */
+    public function getStartTime(): ?float;
 }

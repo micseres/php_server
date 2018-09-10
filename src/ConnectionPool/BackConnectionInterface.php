@@ -20,9 +20,9 @@ interface BackConnectionInterface
     public function addTask(TaskInterface $task);
 
     /**
-     * @return int
+     * @return float
      */
-    public function getLoading(): int;
+    public function getLoading(): float ;
 
     /**
      *

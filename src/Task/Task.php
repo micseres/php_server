@@ -24,6 +24,9 @@ class Task implements TaskInterface, \JsonSerializable
     /** @var string|null */
     private $connectionId;
 
+    /** @var float */
+    private $startTime;
+
     public function __construct(string $clientId, array $params)
     {
         $this->clientId = $clientId;
@@ -84,5 +87,21 @@ class Task implements TaskInterface, \JsonSerializable
             'taskId' => $this->taskId,
             'params' => $this->params
         ];
+    }
+
+    /**
+     * @return void
+     */
+    public function start()
+    {
+        $this->startTime = microtime(true);
+    }
+
+    /**
+     * @return float|null
+     */
+    public function getStartTime(): ?float
+    {
+        return $this->startTime;
     }
 }

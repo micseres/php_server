@@ -28,6 +28,12 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     /** @var \swoole_server  */
     private $server;
 
+    /** @var int */
+    private $tasksProcessed = 0;
+
+    /** @var float  */
+    private $averageDuration = 0;
+
     /**
      * ConnectionPool constructor.
      *
@@ -61,11 +67,11 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     }
 
     /**
-     * @return int
+     * @return float
      */
-    public function getLoading(): int
+    public function getLoading(): float
     {
-        return count($this->tasks) + ($this->hasOpenTask()?1:0);
+        return (count($this->tasks) + ($this->hasOpenTask()?1:0)) * $this->averageDuration;
     }
 
     /**
@@ -86,12 +92,42 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
 
     public function startNext()
     {
+        if ($this->hasOpenTask()) {
+            $this->postDispatch($this->getCurrentTask());
+        }
         $this->currentTask = array_shift($this->tasks);
 
         if (null === $this->currentTask) {
             return;
         }
+
+        //hitrozhopiy workaround
+        //this case needs to prevent queuing tasks to new connection,
+        //when we do not know it`s power
+        if (0 === $this->tasksProcessed) {
+            $this->averageDuration = 999999999999;
+        }
+
+        $this->currentTask->start();
+
         $this->server->send($this->getId(), $this->currentTask->getStringParams());
+    }
+
+    protected function postDispatch(Task $task)
+    {
+        $duration = microtime(true) - $task->getStartTime();
+        //hitrozhopiy workaround
+        //this case needs to allow queuing tasks to new connection,
+        //when we already got first duration
+        //@see startNext()
+        if (0 === $this->tasksProcessed) {
+            $this->averageDuration = 0;
+        }
+
+        $this->averageDuration = ($this->averageDuration * $this->tasksProcessed + $duration)
+                                 / ($this->tasksProcessed + 1);
+
+        $this->tasksProcessed++;
     }
 
     /**
