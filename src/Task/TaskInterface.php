@@ -17,5 +17,18 @@ interface TaskInterface
      */
     public function getId(): string;
 
-    public function process();
+    /**
+     * @return string
+     */
+    public function getClientId(): string;
+
+    /**
+     * @return null|string
+     */
+    public function getConnectionId(): ?string;
+
+    /**
+     * @return string
+     */
+    public function getStringParams(): string;
 }

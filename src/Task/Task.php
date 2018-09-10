@@ -31,11 +31,6 @@ class Task implements TaskInterface, \JsonSerializable
         $this->taskId = uniqid('task_');
     }
 
-    public function process()
-    {
-        // TODO: Implement process() method.
-    }
-
     /**
      * {@inheritdoc}
      */
