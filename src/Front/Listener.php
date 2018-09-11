@@ -8,6 +8,7 @@ namespace Micseres\PhpServer\Front;
 
 use Micseres\PhpServer\Exception\InvalidRequestException;
 use Micseres\PhpServer\Request\FrontRequest;
+use Micseres\PhpServer\Response\ErrorResponse;
 use Micseres\PhpServer\Response\Response;
 
 /**
@@ -78,7 +79,8 @@ class Listener
         try {
             $request = new FrontRequest($clientId, $data);
         } catch (InvalidRequestException $exception) {
-            $server->send($clientId, $exception->getMessage(), Response::STATUS__FAIL);
+            $response = new Response($exception->getMessage(), Response::STATUS__FAIL);
+            $server->send($clientId, $response);
 
             return;
         }

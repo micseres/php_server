@@ -9,7 +9,9 @@ namespace Micseres\PhpServer\Back;
 use Micseres\PhpServer\ConnectionPool\BackConnection;
 use Micseres\PhpServer\ConnectionPool\BackConnectionPool;
 use Micseres\PhpServer\Response\ErrorResponse;
+use Micseres\PhpServer\Response\TaskResultResponse;
 use Micseres\PhpServer\Router\Router;
+use Micseres\PhpServer\Server;
 
 /**
  * Class FrontController
@@ -168,8 +170,10 @@ class Listener
         $connection = $this->pool->getConnection($connectionId);
         if ($connection->hasOpenTask()) {
             $task = $connection->getCurrentTask();
-            $this->server->send($task->getClientId(), $data);
+            $response = new TaskResultResponse($task, $data);
+            $this->server->send($task->getClientId(), $response);
             $connection->startNext();
+            Server::$total++;
             return;
         }
         $response = $this->handleCommandMessage($connection, $data);
