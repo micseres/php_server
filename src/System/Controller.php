@@ -7,6 +7,7 @@
 namespace Micseres\PhpServer\System;
 
 use Micseres\PhpServer\Router\Router;
+use Micseres\PhpServer\Server;
 
 /**
  * Class Controller
@@ -33,6 +34,7 @@ class Controller
      * @uses cowAction
      * @uses warAction
      * @uses helpAction
+     * @uses totalAction
      * @param string $action
      *
      * @return string
@@ -86,6 +88,19 @@ class Controller
     {
         $result = "Available commands are: \n";
         $result .= "routes, ping, help";
+
+        return $result;
+    }
+
+    /**
+     * @used-by dispatch
+     */
+    private function totalAction(): string
+    {
+        $total = Server::$total;
+        $duration = microtime(true) - Server::$start;
+
+        $result = sprintf("processed %d in %f \n", $total, $duration);
 
         return $result;
     }

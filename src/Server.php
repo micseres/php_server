@@ -19,6 +19,8 @@ use Micseres\PhpServer\System;
  */
 class Server
 {
+    public static $total = 0;
+    public static $start = 0;
     private $frontListener;
     private $backListener;
 
@@ -30,6 +32,7 @@ class Server
      */
     public function run()
     {
+        self::$start = microtime(true);
         $server = $this->buildServer();
 //        $server->set(['task_worker_num'=>32]);
         $router = new Router();
@@ -46,6 +49,7 @@ class Server
         $requestHandler->addMiddleware(new Front\RequestHandler\QueueTask($router));
         $this->frontListener = new Front\Listener($server, $requestHandler);
 
+        echo "im start\n";
         $server->start();
     }
 
@@ -57,11 +61,11 @@ class Server
     {
         $type = getenv('SOCKET_SYSTEM_TYPE');
         if (null === $type || 'unix' === $type) {
-            $socket = getenv('SOCKET_SYSTEM_TYPE');
+            $socket = getenv('SOCKET_SYSTEM_FILE');
             if (null === $socket) {
                 $socket = '/var/run/micseres/sys.sock';
             }
-            return  new \swoole_server($socket, 0, SWOOLE_BASE, SWOOLE_UNIX_STREAM);
+            return new \swoole_server($socket, 0, SWOOLE_BASE, SWOOLE_UNIX_STREAM);
         }
 
         $host = getenv('SOCKET_SYSTEM_HOST');

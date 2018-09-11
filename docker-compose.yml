@@ -1,0 +1,127 @@
+version: '3'
+services:
+
+  server:
+    build: ./
+    container_name: server
+    image: micseres/micro-services-hub
+    environment:
+     - APP_ENV=prod
+    networks:
+      hub:
+        ipv4_address: 10.5.0.101
+    volumes:
+      - ./:/app
+
+  client1:
+    build: ./test/client
+    container_name: client1
+    image: micseres/micro-services-client
+    networks:
+      hub:
+        ipv4_address: 10.5.0.102
+    depends_on:
+      - server
+    environment:
+     - NAME=client1
+    volumes:
+      - ./test/client:/app
+
+  client2:
+    build: ./test/client
+    container_name: client2
+    image: micseres/micro-services-client
+    networks:
+      hub:
+        ipv4_address: 10.5.0.103
+    depends_on:
+      - server
+    environment:
+     - NAME=client2
+    volumes:
+      - ./test/client:/app
+
+  client3:
+    build: ./test/client
+    container_name: client3
+    image: micseres/micro-services-client
+    networks:
+      hub:
+        ipv4_address: 10.5.0.104
+    environment:
+     - NAME=client3
+    depends_on:
+      - server
+    volumes:
+      - ./test/client:/app
+
+  client4:
+    build: ./test/client
+    container_name: client4
+    image: micseres/micro-services-client
+    networks:
+      hub:
+        ipv4_address: 10.5.0.105
+    depends_on:
+      - server
+    environment:
+     - NAME=client4
+    volumes:
+      - ./test/client:/app
+
+  client5:
+    build: ./test/client
+    container_name: client5
+    image: micseres/micro-services-client
+    networks:
+      hub:
+        ipv4_address: 10.5.0.106
+    depends_on:
+      - server
+    environment:
+     - NAME=client5
+    volumes:
+      - ./test/client:/app
+
+  service1:
+    build: ./test/microserver
+    container_name: service1
+    image: micseres/micro-services-service
+    networks:
+      hub:
+        ipv4_address: 10.5.0.107
+    depends_on:
+      - server
+    environment:
+      - NAME=server1
+    volumes:
+      - ./test/service:/app
+
+  service2:
+    build: ./test/microserver
+    container_name: service2
+    image: micseres/micro-services-service
+    networks:
+      hub:
+        ipv4_address: 10.5.0.108
+    depends_on:
+      - server
+    environment:
+      - NAME=server2
+
+  service3:
+    build: ./test/microserver
+    container_name: service3
+    image: micseres/micro-services-service
+    networks:
+      hub:
+        ipv4_address: 10.5.0.109
+    depends_on:
+      - server
+    environment:
+      - NAME=server3
+
+networks:
+  hub:
+    external: true
+#docker network create --gateway 10.5.0.1 --subnet 10.5.0.0/24 hub
