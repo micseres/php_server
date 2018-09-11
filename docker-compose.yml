@@ -1,12 +1,22 @@
 version: '3'
 services:
 
-  server:
+  server01:
     build: ./
-    container_name: server
+    container_name: server01
     image: micseres/micro-services-hub
     environment:
      - APP_ENV=prod
+     - APP_ENV=dev
+     - SOCKET_FRONT_TYPE=tcp
+     - SOCKET_FRONT_HOST=0.0.0.0
+     - SOCKET_FRONT_PORT=9501
+     - SOCKET_BACK_TYPE=tcp
+     - SOCKET_BACK_HOST=0.0.0.0
+     - SOCKET_BACK_PORT=9502
+     - SOCKET_SYSTEM_TYPE=tcp
+     - SOCKET_SYSTEM_HOST=0.0.0.0
+     - SOCKET_SYSTEM_PORT=9503
     networks:
       hub:
         ipv4_address: 10.5.0.101
@@ -21,7 +31,7 @@ services:
       hub:
         ipv4_address: 10.5.0.102
     depends_on:
-      - server
+      - server01
     environment:
      - NAME=client1
     volumes:
@@ -35,7 +45,7 @@ services:
       hub:
         ipv4_address: 10.5.0.103
     depends_on:
-      - server
+      - server01
     environment:
      - NAME=client2
     volumes:
@@ -51,7 +61,7 @@ services:
     environment:
      - NAME=client3
     depends_on:
-      - server
+      - server01
     volumes:
       - ./test/client:/app
 
@@ -63,7 +73,7 @@ services:
       hub:
         ipv4_address: 10.5.0.105
     depends_on:
-      - server
+      - server01
     environment:
      - NAME=client4
     volumes:
@@ -77,7 +87,7 @@ services:
       hub:
         ipv4_address: 10.5.0.106
     depends_on:
-      - server
+      - server01
     environment:
      - NAME=client5
     volumes:
@@ -91,11 +101,11 @@ services:
       hub:
         ipv4_address: 10.5.0.107
     depends_on:
-      - server
+      - server01
     environment:
       - NAME=server1
     volumes:
-      - ./test/service:/app
+      - ./test/microserver:/app
 
   service2:
     build: ./test/microserver
@@ -105,9 +115,11 @@ services:
       hub:
         ipv4_address: 10.5.0.108
     depends_on:
-      - server
+      - server01
     environment:
       - NAME=server2
+    volumes:
+    - ./test/microserver:/app
 
   service3:
     build: ./test/microserver
@@ -117,9 +129,11 @@ services:
       hub:
         ipv4_address: 10.5.0.109
     depends_on:
-      - server
+      - server01
     environment:
       - NAME=server3
+    volumes:
+    - ./test/microserver:/app
 
 networks:
   hub:

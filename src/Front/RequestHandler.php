@@ -40,6 +40,7 @@ class RequestHandler
         if ($this->process === null) {
             $this->process = $this->closureBuilder->build($this->middlewares);
         }
+
         $method = $this->process;
 
         return $method($request);

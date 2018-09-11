@@ -4,7 +4,7 @@
  * @since : 10.09.18
  */
 
-$client = new \swoole_client(SWOOLE_SOCK_TCP, SWOOLE_SOCK_ASYNC);
+$client = new swoole_client(SWOOLE_SOCK_TCP, SWOOLE_SOCK_ASYNC);
 
 $client->on(
     "connect",
@@ -41,7 +41,6 @@ $client->on(
 $client->on(
     "error",
     function (swoole_client $cli) {
-        var_dump($cli);
         echo "Connection Error\n";
     }
 );
@@ -52,5 +51,5 @@ $client->on(
     }
 );
 
-$client->connect('127.0.0.1', 9501);
-//$client->connect('10.5.0.101', 9501);
+//$client->connect('127.0.0.1', 9501);
+$client->connect('10.5.0.101', 9501);

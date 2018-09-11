@@ -54,5 +54,5 @@ $client->on(
         echo "Connection Closed\n";
     }
 );
-$client->connect('127.0.0.1', 9502);
-//$client->connect('10.5.0.101', 9502);
+//$client->connect('127.0.0.1', 9502);
+$client->connect('10.5.0.101', 9502);
