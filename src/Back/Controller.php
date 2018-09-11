@@ -6,7 +6,10 @@
 
 namespace Micseres\PhpServer\Back;
 
-use Micseres\PhpServer\Router;
+use Micseres\PhpServer\ConnectionPool\BackConnection;
+use Micseres\PhpServer\Exception\ConnectionAlreadyAddedException;
+use Micseres\PhpServer\Router\Route;
+use Micseres\PhpServer\Router\Router;
 
 /**
  * Class Controller
@@ -14,7 +17,7 @@ use Micseres\PhpServer\Router;
  */
 class Controller
 {
-    /** @var Router */
+    /** @var Router  */
     private $router;
 
     /**
@@ -29,29 +32,67 @@ class Controller
 
     /**
      * @uses registerAction
+     * @uses helpAction
      *
-     * @param string $action
-     * @param array  $params
-     * @param int    $fd
-     * @param int    $reactorId
+     * @param BackConnection $connection
+     * @param string         $action
+     * @param array          $params
      *
      * @return string
      */
-    public function dispatch(string $action, array $params, int $fd, int $reactorId): string
+    public function dispatch(BackConnection $connection, string $action, array $params): string
     {
         $methodName = $action.'Action';
         if (!method_exists($this, $methodName)) {
             throw new \RuntimeException("action $action not found");
         }
 
-        return ($this->$methodName($params, $fd, $reactorId))."\n";
+        return $this->$methodName($connection, $params);
     }
 
-    private function registerAction(array $params, int $fd, int $reactorId)
+    /**
+     * @used-by dispatch()
+     * @param BackConnection $connection
+     * @param array          $params
+     *
+     * @return string
+     */
+    private function registerAction(BackConnection $connection, array $params): string
     {
-        if (!isset($params['route'])) {
+        $routePath = $params['route']??null;
+        if (null === $routePath) {
             throw new \RuntimeException("route is required");
         }
-        $this->router->addMicroservice($params['route'], $fd);
+        if (!$this->router->hasRoute($routePath)) {
+            $route = new Route($routePath);
+            $this->router->addRoute($route);
+        }
+
+        $route = $this->router->getRoute($routePath);
+
+        try {
+            $route->addConnection($connection);
+        } catch (ConnectionAlreadyAddedException $exception) {
+            return $exception->getMessage();
+        }
+
+        return "OK";
+    }
+
+    /**
+     * @used-by dispatch()
+     * @param BackConnection $connection
+     * @param array          $params
+     *
+     * @return string
+     */
+    private function helpAction(BackConnection $connection, array $params): string
+    {
+        $message = "this ports accept only valid json formatted messages\n";
+        $message .= "each message should contains mandatory \"action\" field with action \n";
+        $message .= "and optional \"params\" field, what contains action parameters\n";
+        $message .= "example { \"action\": \"register\", \"params\": {\"route\": \"name\"}}";
+
+        return $message;
     }
 }

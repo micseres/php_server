@@ -6,8 +6,11 @@
 
 namespace Micseres\PhpServer;
 
-use Micseres\PhpServer\Front;
 use Micseres\PhpServer\Back;
+use Micseres\PhpServer\Front;
+use Micseres\PhpServer\ConnectionPool\BackConnectionPool;
+use Micseres\PhpServer\Middleware\ClosureBuilder;
+use Micseres\PhpServer\Router\Router;
 use Micseres\PhpServer\System;
 
 /**
@@ -16,37 +19,59 @@ use Micseres\PhpServer\System;
  */
 class Server
 {
-    private $backSocket = '/var/run/micseres/back.sock';
-    private $frontSocket = '/var/run/micseres/front.sock';
-    private $systemSocket = '/var/run/micseres/sys.sock';
+    private $frontListener;
+    private $backListener;
 
-    private  $frontPool;
-    private  $backPool;
+    /** @var System\Listener */
+    private $systemListener;
 
-    public function run() {
-
-        //todo: resolve this params via dotenv
-        $server = new \swoole_server($this->systemSocket, 0, SWOOLE_BASE, SWOOLE_UNIX_STREAM);
-        $this->frontPool = $server->addListener($this->frontSocket, 0, SWOOLE_UNIX_STREAM);
-        $this->backPool = $server->addListener($this->backSocket, 0, SWOOLE_UNIX_STREAM);
-
+    /**
+     * @throws \Exception
+     */
+    public function run()
+    {
+        $server = $this->buildServer();
+//        $server->set(['task_worker_num'=>32]);
         $router = new Router();
-
         $systemController = new System\Controller($router);
-        $systemListener = new System\Listener($router, $systemController);
-        $server->on('connect', [$systemListener, 'onConnect']);
-        $server->on('receive', [$systemListener, 'onReceive']);
-
+        $this->systemListener = new System\Listener($server, $systemController);
+        $backPool = new BackConnectionPool($server);
         $backController = new Back\Controller($router);
-        $backListener = new Back\Listener($router, $backController);
-        $this->backPool->on('connect', [$backListener, 'onConnect']);
-        $this->backPool->on('receive', [$backListener, 'onReceive']);
+        $this->backListener = new Back\Listener($server, $backPool, $router, $backController);
 
-        $frontController = new Front\Controller();
-        $frontListener = new Front\Listener($router, $frontController);
-        $this->frontPool->on('connect', [$frontListener, 'onConnect']);
-        $this->frontPool->on('receive', [$frontListener, 'onReceive']);
+
+        $requestHandler = new Front\RequestHandler(new ClosureBuilder());
+        $requestHandler->addMiddleware(new Front\RequestHandler\Validation());
+        $requestHandler->addMiddleware(new Front\RequestHandler\Authorization());
+        $requestHandler->addMiddleware(new Front\RequestHandler\QueueTask($router));
+        $this->frontListener = new Front\Listener($server, $requestHandler);
 
         $server->start();
+    }
+
+    /**
+     * @return \swoole_server
+     * @throws \Exception
+     */
+    private function buildServer()
+    {
+        $type = getenv('SOCKET_SYSTEM_TYPE');
+        if (null === $type || 'unix' === $type) {
+            $socket = getenv('SOCKET_SYSTEM_TYPE');
+            if (null === $socket) {
+                $socket = '/var/run/micseres/sys.sock';
+            }
+            return  new \swoole_server($socket, 0, SWOOLE_BASE, SWOOLE_UNIX_STREAM);
+        }
+
+        $host = getenv('SOCKET_SYSTEM_HOST');
+        if (null === $host) {
+            throw new \Exception("SOCKET_SYSTEM_HOST should be defined on tcp socket type");
+        }
+        $port = getenv('SOCKET_SYSTEM_PORT');
+        if (null === $port) {
+            throw new \Exception("SOCKET_SYSTEM_PORT should be defined on tcp socket type");
+        }
+        return  new \swoole_server($host, $port, SWOOLE_BASE, SWOOLE_TCP);
     }
 }
