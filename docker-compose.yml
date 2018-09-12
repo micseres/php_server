@@ -103,7 +103,7 @@ services:
     depends_on:
       - server01
     environment:
-      - NAME=server1
+      - NAME=service1
     volumes:
       - ./test/microserver:/app
 
@@ -117,7 +117,7 @@ services:
     depends_on:
       - server01
     environment:
-      - NAME=server2
+      - NAME=service2
     volumes:
     - ./test/microserver:/app
 
@@ -131,7 +131,7 @@ services:
     depends_on:
       - server01
     environment:
-      - NAME=server3
+      - NAME=service3
     volumes:
     - ./test/microserver:/app
 

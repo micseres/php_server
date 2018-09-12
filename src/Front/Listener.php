@@ -38,6 +38,8 @@ class Listener
         $this->port           = $server->addListener($host, $port, $type);
         $this->port->on('connect', [$this, 'onConnect']);
         $this->port->on('receive', [$this, 'onReceive']);
+        $this->port->on('close', [$this, 'onClose']);
+
     }
 
     /**
@@ -88,5 +90,15 @@ class Listener
         $response = $this->requestHandler->handle($request);
 
         $server->send($clientId, $response);
+    }
+
+    /**
+     * @param \swoole_server $server
+     * @param int $fd
+     * @param int $reactorId
+     */
+    public function onClose(\swoole_server $server, int $fd, int $reactorId)
+    {
+        echo "Socket close\n";
     }
 }
