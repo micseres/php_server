@@ -13,7 +13,6 @@ use Micseres\PhpServer\Response\Response;
 use Micseres\PhpServer\Response\TaskResponse;
 use Micseres\PhpServer\Router\Router;
 use Micseres\PhpServer\Task\Task;
-use Swoole\Server;
 
 /**
  * Class QueueTask

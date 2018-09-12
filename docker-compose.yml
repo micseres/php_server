@@ -24,118 +24,118 @@ services:
         ipv4_address: 10.5.0.101
     volumes:
       - ./:/app
-
-  client1:
-    build: ./test/client
-    container_name: client1
-    image: micseres/micro-services-client
-    networks:
-      hub:
-        ipv4_address: 10.5.0.102
-    depends_on:
-      - server01
-    environment:
-     - NAME=client1
-    volumes:
-      - ./test/client:/app
-
-  client2:
-    build: ./test/client
-    container_name: client2
-    image: micseres/micro-services-client
-    networks:
-      hub:
-        ipv4_address: 10.5.0.103
-    depends_on:
-      - server01
-    environment:
-     - NAME=client2
-    volumes:
-      - ./test/client:/app
-
-  client3:
-    build: ./test/client
-    container_name: client3
-    image: micseres/micro-services-client
-    networks:
-      hub:
-        ipv4_address: 10.5.0.104
-    environment:
-     - NAME=client3
-    depends_on:
-      - server01
-    volumes:
-      - ./test/client:/app
-
-  client4:
-    build: ./test/client
-    container_name: client4
-    image: micseres/micro-services-client
-    networks:
-      hub:
-        ipv4_address: 10.5.0.105
-    depends_on:
-      - server01
-    environment:
-     - NAME=client4
-    volumes:
-      - ./test/client:/app
-
-  client5:
-    build: ./test/client
-    container_name: client5
-    image: micseres/micro-services-client
-    networks:
-      hub:
-        ipv4_address: 10.5.0.106
-    depends_on:
-      - server01
-    environment:
-     - NAME=client5
-    volumes:
-      - ./test/client:/app
-
-  service1:
-    build: ./test/microserver
-    container_name: service1
-    image: micseres/micro-services-service
-    networks:
-      hub:
-        ipv4_address: 10.5.0.107
-    depends_on:
-      - server01
-    environment:
-      - NAME=service1
-    volumes:
-      - ./test/microserver:/app
-
-  service2:
-    build: ./test/microserver
-    container_name: service2
-    image: micseres/micro-services-service
-    networks:
-      hub:
-        ipv4_address: 10.5.0.108
-    depends_on:
-      - server01
-    environment:
-      - NAME=service2
-    volumes:
-    - ./test/microserver:/app
-
-  service3:
-    build: ./test/microserver
-    container_name: service3
-    image: micseres/micro-services-service
-    networks:
-      hub:
-        ipv4_address: 10.5.0.109
-    depends_on:
-      - server01
-    environment:
-      - NAME=service3
-    volumes:
-    - ./test/microserver:/app
+#
+#  client1:
+#    build: ./test/client
+#    container_name: client1
+#    image: micseres/micro-services-client
+#    networks:
+#      hub:
+#        ipv4_address: 10.5.0.102
+#    depends_on:
+#      - server01
+#    environment:
+#     - NAME=client1
+#    volumes:
+#      - ./test/client:/app
+#
+#  client2:
+#    build: ./test/client
+#    container_name: client2
+#    image: micseres/micro-services-client
+#    networks:
+#      hub:
+#        ipv4_address: 10.5.0.103
+#    depends_on:
+#      - server01
+#    environment:
+#     - NAME=client2
+#    volumes:
+#      - ./test/client:/app
+#
+#  client3:
+#    build: ./test/client
+#    container_name: client3
+#    image: micseres/micro-services-client
+#    networks:
+#      hub:
+#        ipv4_address: 10.5.0.104
+#    environment:
+#     - NAME=client3
+#    depends_on:
+#      - server01
+#    volumes:
+#      - ./test/client:/app
+#
+#  client4:
+#    build: ./test/client
+#    container_name: client4
+#    image: micseres/micro-services-client
+#    networks:
+#      hub:
+#        ipv4_address: 10.5.0.105
+#    depends_on:
+#      - server01
+#    environment:
+#     - NAME=client4
+#    volumes:
+#      - ./test/client:/app
+#
+#  client5:
+#    build: ./test/client
+#    container_name: client5
+#    image: micseres/micro-services-client
+#    networks:
+#      hub:
+#        ipv4_address: 10.5.0.106
+#    depends_on:
+#      - server01
+#    environment:
+#     - NAME=client5
+#    volumes:
+#      - ./test/client:/app
+#
+#  service1:
+#    build: ./test/microserver
+#    container_name: service1
+#    image: micseres/micro-services-service
+#    networks:
+#      hub:
+#        ipv4_address: 10.5.0.107
+#    depends_on:
+#      - server01
+#    environment:
+#      - NAME=service1
+#    volumes:
+#      - ./test/microserver:/app
+#
+#  service2:
+#    build: ./test/microserver
+#    container_name: service2
+#    image: micseres/micro-services-service
+#    networks:
+#      hub:
+#        ipv4_address: 10.5.0.108
+#    depends_on:
+#      - server01
+#    environment:
+#      - NAME=service2
+#    volumes:
+#    - ./test/microserver:/app
+#
+#  service3:
+#    build: ./test/microserver
+#    container_name: service3
+#    image: micseres/micro-services-service
+#    networks:
+#      hub:
+#        ipv4_address: 10.5.0.109
+#    depends_on:
+#      - server01
+#    environment:
+#      - NAME=service3
+#    volumes:
+#    - ./test/microserver:/app
 
 networks:
   hub:

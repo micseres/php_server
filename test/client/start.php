@@ -15,6 +15,7 @@ $client->on(
                 'key' => 1,
             ],
         ];
+
         $cli->send(json_encode($request));
     }
 );
