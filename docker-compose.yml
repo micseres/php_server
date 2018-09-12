@@ -8,6 +8,8 @@ services:
     environment:
      - APP_ENV=prod
      - APP_ENV=dev
+     - LOG_DIR=./var/logs/server.log
+     - LOG_LEVEL=100
      - SOCKET_FRONT_TYPE=tcp
      - SOCKET_FRONT_HOST=0.0.0.0
      - SOCKET_FRONT_PORT=9501

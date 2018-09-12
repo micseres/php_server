@@ -105,6 +105,8 @@ class Listener
      */
     public function onConnect(\swoole_server $server, int $connectionId, int $fromId)
     {
+        Server::getLogger()->info('BACK: connection open', $server->connection_info($connectionId, $fromId) ?? []);
+
         $connection = new BackConnection($server, $connectionId);
         $this->pool->addConnection($connection);
 
@@ -153,16 +155,20 @@ class Listener
         }
 
         $this->pool->removeConnection($connectionId);
+
+        Server::getLogger()->info('BACK: connection close', $server->connection_info($connectionId, $reactorId) ?? []);
     }
 
     /**
      * @param \swoole_server $server
      * @param int            $connectionId
-     * @param int            $reactor_id
+     * @param int            $reactorId
      * @param string         $data
      */
-    public function onReceive(\swoole_server $server, int $connectionId, int $reactor_id, string $data)
+    public function onReceive(\swoole_server $server, int $connectionId, int $reactorId, string $data)
     {
+        Server::getLogger()->info("FRONT: request {$data}", $server->connection_info($connectionId, $reactorId) ?? []);
+
         if (!$this->pool->hasConnection($connectionId)) {
             return;
         }
@@ -178,6 +184,8 @@ class Listener
         }
         $response = $this->handleCommandMessage($connection, $data);
         $this->server->send($connectionId, $response);
+
+        Server::getLogger()->info("FRONT: request {$response}", $server->connection_info($connectionId, $reactorId) ?? []);
     }
 
     /**

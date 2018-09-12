@@ -10,6 +10,7 @@ use Micseres\PhpServer\Exception\InvalidRequestException;
 use Micseres\PhpServer\Request\FrontRequest;
 use Micseres\PhpServer\Response\ErrorResponse;
 use Micseres\PhpServer\Response\Response;
+use Micseres\PhpServer\Server;
 
 /**
  * Class Controller
@@ -72,12 +73,22 @@ class Listener
 
     public function onConnect(\swoole_server $server, int $clientId, int $reactorId)
     {
+        Server::getLogger()->info('FRONT: connection open', $server->connection_info($clientId, $reactorId) ?? []);
+
         $helloMessage = "Welcome to front socket\n";
         $server->send($clientId, $helloMessage);
     }
 
+    /**
+     * @param \swoole_server $server
+     * @param int $clientId
+     * @param int $reactorId
+     * @param string $data
+     */
     public function onReceive(\swoole_server $server, int $clientId, int $reactorId, string $data)
     {
+        Server::getLogger()->info("FRONT: request {$data}", $server->connection_info($clientId, $reactorId) ?? []);
+
         try {
             $request = new FrontRequest($clientId, $data);
         } catch (InvalidRequestException $exception) {
@@ -90,15 +101,17 @@ class Listener
         $response = $this->requestHandler->handle($request);
 
         $server->send($clientId, $response);
+
+        Server::getLogger()->info("FRONT: response {$response}", $server->connection_info($clientId, $reactorId) ?? []);
     }
 
     /**
      * @param \swoole_server $server
-     * @param int $fd
+     * @param int $clientId
      * @param int $reactorId
      */
-    public function onClose(\swoole_server $server, int $fd, int $reactorId)
+    public function onClose(\swoole_server $server, int $clientId, int $reactorId)
     {
-        echo "Socket close\n";
+        Server::getLogger()->info('FRONT: connection close', $server->connection_info($clientId, $reactorId) ?? []);
     }
 }

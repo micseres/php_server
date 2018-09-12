@@ -27,6 +27,7 @@ $client->on(
 $client->on(
     "receive",
     function (swoole_client $cli, $data) use (&$isRegistered, $name) {
+        echo($data."\n");
         $data = trim($data);
         if (empty($data)) {
             return;
