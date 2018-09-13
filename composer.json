@@ -23,7 +23,9 @@
   "require": {
     "php": "^7.2",
     "ext-swoole": "*",
-    "symfony/dotenv": "^4.1"
+    "ext-json": "*",
+    "symfony/dotenv": "^4.1",
+    "monolog/monolog": "^1.23"
   },
   "require-dev": {
     "eaglewu/swoole-ide-helper": "dev-master"

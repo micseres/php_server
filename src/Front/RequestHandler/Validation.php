@@ -8,6 +8,7 @@ namespace Micseres\PhpServer\Front\RequestHandler;
 
 use Micseres\PhpServer\Front\RequestHandlerInterface;
 use Micseres\PhpServer\Response\Response;
+use Micseres\PhpServer\Server;
 
 /**
  * Class ValidationRequestHandler
@@ -26,7 +27,9 @@ class Validation implements RequestHandlerInterface
         $action = $request->action ?? null;
 
         if (empty($action)) {
-            return new Response("action is mandatory", Response::STATUS__FAIL);
+            Server::getLogger()->warning('Action is mandatory', (array)$request);
+
+            return new Response("Action is mandatory", Response::STATUS__FAIL);
         }
 
         return $next($request);

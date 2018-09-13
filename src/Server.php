@@ -12,6 +12,7 @@ use Micseres\PhpServer\ConnectionPool\BackConnectionPool;
 use Micseres\PhpServer\Middleware\ClosureBuilder;
 use Micseres\PhpServer\Router\Router;
 use Micseres\PhpServer\System;
+use Monolog\Logger;
 
 /**
  * Class Server
@@ -25,7 +26,12 @@ class Server
     private $backListener;
 
     /** @var System\Listener */
+
     private $systemListener;
+    /**
+     * @var Logger
+     */
+    public static $logger;
 
     /**
      * @throws \Exception
@@ -33,8 +39,11 @@ class Server
     public function run()
     {
         self::$start = microtime(true);
+
         $server = $this->buildServer();
-//        $server->set(['task_worker_num'=>32]);
+        $server->set([
+            'debug_mode' => 0
+        ]);
         $router = new Router();
         $systemController = new System\Controller($router);
         $this->systemListener = new System\Listener($server, $systemController);
@@ -49,7 +58,8 @@ class Server
         $requestHandler->addMiddleware(new Front\RequestHandler\QueueTask($router));
         $this->frontListener = new Front\Listener($server, $requestHandler);
 
-        echo "im start\n";
+        self::getLogger()->info('SERVER IS STARTED');
+
         $server->start();
     }
 
@@ -60,22 +70,45 @@ class Server
     private function buildServer()
     {
         $type = getenv('SOCKET_SYSTEM_TYPE');
+
         if (null === $type || 'unix' === $type) {
             $socket = getenv('SOCKET_SYSTEM_FILE');
+
             if (null === $socket) {
                 $socket = '/var/run/micseres/sys.sock';
             }
+
             return new \swoole_server($socket, 0, SWOOLE_BASE, SWOOLE_UNIX_STREAM);
         }
 
         $host = getenv('SOCKET_SYSTEM_HOST');
+
         if (null === $host) {
             throw new \Exception("SOCKET_SYSTEM_HOST should be defined on tcp socket type");
         }
+
         $port = getenv('SOCKET_SYSTEM_PORT');
+
         if (null === $port) {
             throw new \Exception("SOCKET_SYSTEM_PORT should be defined on tcp socket type");
         }
+
         return  new \swoole_server($host, $port, SWOOLE_BASE, SWOOLE_TCP);
+    }
+
+    /**
+     * @param Logger $logger
+     */
+    public static function setLogger(Logger $logger): void
+    {
+        self::$logger = $logger;
+    }
+
+    /**
+     * @return Logger
+     */
+    public static function getLogger(): Logger
+    {
+        return self::$logger;
     }
 }
