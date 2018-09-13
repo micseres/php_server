@@ -109,9 +109,6 @@ class Listener
 
         $connection = new BackConnection($server, $connectionId);
         $this->pool->addConnection($connection);
-
-        $helloMessage = "Hello\n";
-        $this->server->send($connectionId, $helloMessage);
     }
 
     /**
@@ -167,25 +164,28 @@ class Listener
      */
     public function onReceive(\swoole_server $server, int $connectionId, int $reactorId, string $data)
     {
-        Server::getLogger()->info("FRONT: request {$data}", $server->connection_info($connectionId, $reactorId) ?? []);
+        Server::getLogger()->info("BACK: request {$data}", $server->connection_info($connectionId, $reactorId) ?? []);
 
         if (!$this->pool->hasConnection($connectionId)) {
             return;
         }
         /** @var BackConnection $connection */
         $connection = $this->pool->getConnection($connectionId);
+
+        $response = $this->handleCommandMessage($connection, $data);
+
+        if (null !== $response) {
+            $this->server->send($connectionId, $response);
+            Server::getLogger()->info("BACK: command response {$response}", $server->connection_info($connectionId, $reactorId) ?? []);
+        }
+
         if ($connection->hasOpenTask()) {
             $task = $connection->getCurrentTask();
             $response = new TaskResultResponse($task, $data);
             $this->server->send($task->getClientId(), $response);
             $connection->startNext();
             Server::$total++;
-            return;
         }
-        $response = $this->handleCommandMessage($connection, $data);
-        $this->server->send($connectionId, $response);
-
-        Server::getLogger()->info("FRONT: request {$response}", $server->connection_info($connectionId, $reactorId) ?? []);
     }
 
     /**
@@ -197,25 +197,33 @@ class Listener
     private function handleCommandMessage(BackConnection $connection, string $data)
     {
         $request = json_decode($data, true);
+
         if (null === $request) {
             $message = "Invalid JSON format message\n ";
             $message .= 'try { "action": "help"} to help'."\n";
 
             return $message;
         }
-        $action = $request['action']??'';
-        $params = $request['params']??[];
 
-        if (empty($action)) {
-            return "Action is mandatory\n";
+        $route = $request['route']??'';
+        $payload = $request['payload']??[];
+
+        if ($route === 'system') {
+            if (!isset($payload['action'])) {
+                return "Action is mandatory\n";
+            }
+
+            $action = $payload['action'];
+
+            try {
+                $data = $this->controller->dispatch($connection, $action, $payload);
+            } catch (\RuntimeException $exception) {
+                $data = $exception->getMessage();
+            }
+
+            return $data."\n";
         }
 
-        try {
-            $data = $this->controller->dispatch($connection, $action, $params);
-        } catch (\RuntimeException $exception) {
-            $data = $exception->getMessage();
-        }
-
-        return $data."\n";
+        return null;
     }
 }
