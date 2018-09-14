@@ -172,9 +172,8 @@ class Listener
         /** @var BackConnection $connection */
         $connection = $this->pool->getConnection($connectionId);
 
-        $response = $this->handleCommandMessage($connection, $data);
-
-        if (null !== $response) {
+        if ($this->detectCommandMessage($data)) {
+            $response = $this->handleCommandMessage($connection, $data);
             $this->server->send($connectionId, $response);
             Server::getLogger()->info("BACK: command response {$response}", $server->connection_info($connectionId, $reactorId) ?? []);
         }
@@ -189,12 +188,28 @@ class Listener
     }
 
     /**
+     * @param string $data
+     * @return bool
+     */
+    private function detectCommandMessage(string $data): bool
+    {
+        $request = json_decode($data, true);
+        $route = $request['route']??'';
+
+        if ($route === 'system') {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * @param BackConnection $connection
      * @param string         $data
      *
      * @return      string
      */
-    private function handleCommandMessage(BackConnection $connection, string $data)
+    private function handleCommandMessage(BackConnection $connection, string $data): string
     {
         $request = json_decode($data, true);
 
@@ -205,25 +220,20 @@ class Listener
             return $message;
         }
 
-        $route = $request['route']??'';
         $payload = $request['payload']??[];
 
-        if ($route === 'system') {
-            if (!isset($payload['action'])) {
-                return "Action is mandatory\n";
-            }
-
-            $action = $payload['action'];
-
-            try {
-                $data = $this->controller->dispatch($connection, $action, $payload);
-            } catch (\RuntimeException $exception) {
-                $data = $exception->getMessage();
-            }
-
-            return $data."\n";
+        if (!isset($payload['action'])) {
+            return "Action is mandatory\n";
         }
 
-        return null;
+        $action = $payload['action'];
+
+        try {
+            $data = $this->controller->dispatch($connection, $action, $payload);
+        } catch (\RuntimeException $exception) {
+            $data = $exception->getMessage();
+        }
+
+        return $data."\n";
     }
 }
