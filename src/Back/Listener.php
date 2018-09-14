@@ -165,6 +165,7 @@ class Listener
     public function onReceive(\swoole_server $server, int $connectionId, int $reactorId, string $data)
     {
         Server::getLogger()->info("BACK: request {$data}", $server->connection_info($connectionId, $reactorId) ?? []);
+        $data = preg_replace('~[\r\n]+~', '', $data);
 
         if (!$this->pool->hasConnection($connectionId)) {
             return;
@@ -179,6 +180,9 @@ class Listener
         }
 
         if ($connection->hasOpenTask()) {
+            $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC);
+            $iv = substr('sfasdfsadf3453523452353437tyeyertyery54634564356', 0, $iv_size);
+            $data = openssl_decrypt($data, 'aes128', 'pass',  0, $iv);
             $task = $connection->getCurrentTask();
             $response = new TaskResultResponse($task, $data);
             $this->server->send($task->getClientId(), $response);
