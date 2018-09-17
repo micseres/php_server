@@ -42,7 +42,10 @@ class Server
 
         $server = $this->buildServer();
         $server->set([
-            'debug_mode' => 0
+            'debug_mode' => 0,
+            'buffer_output_size' => 32 * 1024 *1024,
+            'open_eof_check' => true,
+            'package_eof' => "\r\n",
         ]);
         $router = new Router();
         $systemController = new System\Controller($router);

@@ -109,9 +109,6 @@ class Listener
 
         $connection = new BackConnection($server, $connectionId);
         $this->pool->addConnection($connection);
-
-        $helloMessage = "Hello\n";
-        $this->server->send($connectionId, $helloMessage);
     }
 
     /**
@@ -167,25 +164,47 @@ class Listener
      */
     public function onReceive(\swoole_server $server, int $connectionId, int $reactorId, string $data)
     {
-        Server::getLogger()->info("FRONT: request {$data}", $server->connection_info($connectionId, $reactorId) ?? []);
+        Server::getLogger()->info("BACK: request {$data}", $server->connection_info($connectionId, $reactorId) ?? []);
+        $data = preg_replace('~[\r\n]+~', '', $data);
 
         if (!$this->pool->hasConnection($connectionId)) {
             return;
         }
         /** @var BackConnection $connection */
         $connection = $this->pool->getConnection($connectionId);
+
+        if ($this->detectCommandMessage($data)) {
+            $response = $this->handleCommandMessage($connection, $data);
+            $this->server->send($connectionId, $response);
+            Server::getLogger()->info("BACK: command response {$response}", $server->connection_info($connectionId, $reactorId) ?? []);
+        }
+
         if ($connection->hasOpenTask()) {
+            $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC);
+            $iv = substr('sfasdfsadf3453523452353437tyeyertyery54634564356', 0, $iv_size);
+            $data = openssl_decrypt($data, 'aes128', 'pass',  0, $iv);
             $task = $connection->getCurrentTask();
             $response = new TaskResultResponse($task, $data);
             $this->server->send($task->getClientId(), $response);
             $connection->startNext();
             Server::$total++;
-            return;
         }
-        $response = $this->handleCommandMessage($connection, $data);
-        $this->server->send($connectionId, $response);
+    }
 
-        Server::getLogger()->info("FRONT: request {$response}", $server->connection_info($connectionId, $reactorId) ?? []);
+    /**
+     * @param string $data
+     * @return bool
+     */
+    private function detectCommandMessage(string $data): bool
+    {
+        $request = json_decode($data, true);
+        $route = $request['route']??'';
+
+        if ($route === 'system') {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -194,24 +213,27 @@ class Listener
      *
      * @return      string
      */
-    private function handleCommandMessage(BackConnection $connection, string $data)
+    private function handleCommandMessage(BackConnection $connection, string $data): string
     {
         $request = json_decode($data, true);
+
         if (null === $request) {
             $message = "Invalid JSON format message\n ";
             $message .= 'try { "action": "help"} to help'."\n";
 
             return $message;
         }
-        $action = $request['action']??'';
-        $params = $request['params']??[];
 
-        if (empty($action)) {
+        $payload = $request['payload']??[];
+
+        if (!isset($payload['action'])) {
             return "Action is mandatory\n";
         }
 
+        $action = $payload['action'];
+
         try {
-            $data = $this->controller->dispatch($connection, $action, $params);
+            $data = $this->controller->dispatch($connection, $action, $payload);
         } catch (\RuntimeException $exception) {
             $data = $exception->getMessage();
         }

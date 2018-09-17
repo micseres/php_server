@@ -6,6 +6,7 @@
 
 namespace Micseres\PhpServer\ConnectionPool;
 
+use Micseres\PhpServer\Server;
 use Micseres\PhpServer\Task\Task;
 use Micseres\PhpServer\Task\TaskInterface;
 
@@ -110,7 +111,9 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
 
         $this->currentTask->start();
 
-        $this->server->send($this->getId(), $this->currentTask->getStringParams());
+        $isSend = $this->server->send($this->getId(), $this->currentTask->getStringParams());
+
+        Server::getLogger()->info("BACK: request sent to service {$this->currentTask->getStringParams()}", ['microservice'=>  $this->getId(), 'data' => $this->currentTask->getStringParams()]);
     }
 
     protected function postDispatch(Task $task)
@@ -153,5 +156,13 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
             'currentTask' => $this->currentTask,
             'tasksQueue' => $this->tasks
         ];
+    }
+
+    /**
+     * @return \swoole_server
+     */
+    public function getServer(): \swoole_server
+    {
+        return $this->server;
     }
 }
