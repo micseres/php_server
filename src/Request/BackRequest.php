@@ -12,12 +12,12 @@ namespace Micseres\PhpServer\Request;
  */
 class BackRequest implements RequestInterface
 {
-    public function getAction(): string
+    public function getRoute(): string
     {
         return '';
     }
 
-    public function getParams(): array
+    public function getPayload(): array
     {
         return [];
     }

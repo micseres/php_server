@@ -74,9 +74,6 @@ class Listener
     public function onConnect(\swoole_server $server, int $clientId, int $reactorId)
     {
         Server::getLogger()->info('FRONT: connection open', $server->connection_info($clientId, $reactorId) ?? []);
-
-        $helloMessage = "Welcome to front socket\n";
-        $server->send($clientId, $helloMessage);
     }
 
     /**
