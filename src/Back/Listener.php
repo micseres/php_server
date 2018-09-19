@@ -181,8 +181,8 @@ class Listener
 
         if ($connection->hasOpenTask()) {
             $iv_size = openssl_cipher_iv_length($algo = getenv('ENCRYPT_ALGO'));
-            $iv = substr(md5($key = getenv('ENCRYPT_KEY')), 0, $iv_size);
-            $data = openssl_decrypt($data, $algo, $key,  0, $iv);
+            $iv = substr($connection->getSharedKey(), 0, $iv_size);
+            $data = openssl_decrypt(hex2bin($data), $algo, $connection->getSharedKey(),  0, $iv);
             $task = $connection->getCurrentTask();
             $response = new TaskResultResponse($task, $data);
             $this->server->send($task->getClientId(), $response);

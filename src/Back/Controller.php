@@ -76,7 +76,19 @@ class Controller
             return $exception->getMessage();
         }
 
-        return "OK";
+        $args = [];
+        $args['p'] = hex2bin($params['p']);
+        $args['g'] = hex2bin($params['g']);
+        $private_key = openssl_pkey_new(['dh' => $args]);
+        $details = openssl_pkey_get_details($private_key);
+
+        $connection->setSharedKey(bin2hex(openssl_dh_compute_key(hex2bin($params['public_key']), $private_key)));
+        return json_encode([
+            'status' => 'OK',
+            'payload' => [
+                'public_key' => bin2hex($details['dh']['pub_key'])
+            ]
+        ]);
     }
 
     /**

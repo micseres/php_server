@@ -35,6 +35,9 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     /** @var float  */
     private $averageDuration = 0;
 
+    /** @var string */
+    private $sharedKey;
+
     /**
      * ConnectionPool constructor.
      *
@@ -164,5 +167,21 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     public function getServer(): \swoole_server
     {
         return $this->server;
+    }
+
+    /**
+     * @return string
+     */
+    public function getSharedKey(): string
+    {
+        return $this->sharedKey;
+    }
+
+    /**
+     * @param string $sharedKey
+     */
+    public function setSharedKey(string $sharedKey): void
+    {
+        $this->sharedKey = $sharedKey;
     }
 }
