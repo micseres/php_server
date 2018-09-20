@@ -35,7 +35,7 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     /** @var float  */
     private $averageDuration = 0;
 
-    /** @var string */
+    /** @var string|null */
     private $sharedKey;
 
     /**
@@ -170,17 +170,17 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     }
 
     /**
-     * @return string
+     * @return null|string
      */
-    public function getSharedKey(): string
+    public function getSharedKey(): ?string
     {
         return $this->sharedKey;
     }
 
     /**
-     * @param string $sharedKey
+     * @param null|string $sharedKey
      */
-    public function setSharedKey(string $sharedKey): void
+    public function setSharedKey(?string $sharedKey): void
     {
         $this->sharedKey = $sharedKey;
     }

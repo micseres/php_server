@@ -177,16 +177,18 @@ class Listener
             $response = $this->handleCommandMessage($connection, $data);
             $this->server->send($connectionId, $response);
             Server::getLogger()->info("BACK: command response {$response}", $server->connection_info($connectionId, $reactorId) ?? []);
+            return;
         }
 
         if ($connection->hasOpenTask()) {
-            $iv_size = openssl_cipher_iv_length($algo = getenv('ENCRYPT_ALGO'));
-            $iv = substr($connection->getSharedKey(), 0, $iv_size);
-            $data = openssl_decrypt(hex2bin($data), $algo, $connection->getSharedKey(),  0, $iv);
+
+            if (null !== $connection->getSharedKey()) {
+                $iv_size = openssl_cipher_iv_length($algo = getenv('ENCRYPT_ALGO'));
+                $iv = substr($connection->getSharedKey(), 0, $iv_size);
+                $data = openssl_decrypt(hex2bin($data), $algo, $connection->getSharedKey(),  0, $iv);
+            }
 
             $data = json_decode($data);
-
-            var_dump($data);
 
             $task = $connection->getCurrentTask();
 
@@ -197,13 +199,12 @@ class Listener
                 $connection->startNext();
                 Server::$total++;
                 return;
-            } else {
-                $response = new ErrorResponse($task, '');
-                $this->server->send($task->getClientId(), $response);
-                $connection->startNext();
-                Server::$total++;
             }
 
+            $response = new ErrorResponse($task, 'Service can`t process request correctly');
+            $this->server->send($task->getClientId(), $response);
+            $connection->startNext();
+            Server::$total++;
         }
     }
 
