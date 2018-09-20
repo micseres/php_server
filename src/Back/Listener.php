@@ -183,11 +183,27 @@ class Listener
             $iv_size = openssl_cipher_iv_length($algo = getenv('ENCRYPT_ALGO'));
             $iv = substr($connection->getSharedKey(), 0, $iv_size);
             $data = openssl_decrypt(hex2bin($data), $algo, $connection->getSharedKey(),  0, $iv);
+
+            $data = json_decode($data);
+
+            var_dump($data);
+
             $task = $connection->getCurrentTask();
-            $response = new TaskResultResponse($task, $data);
-            $this->server->send($task->getClientId(), $response);
-            $connection->startNext();
-            Server::$total++;
+
+            if (isset($data->payload->apiKey) && $data->payload->apiKey === getenv('API_KEY'))
+            {
+                $response = new TaskResultResponse($task, $data->payload->data);
+                $this->server->send($task->getClientId(), $response);
+                $connection->startNext();
+                Server::$total++;
+                return;
+            } else {
+                $response = new ErrorResponse($task, '');
+                $this->server->send($task->getClientId(), $response);
+                $connection->startNext();
+                Server::$total++;
+            }
+
         }
     }
 
