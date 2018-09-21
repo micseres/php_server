@@ -6,6 +6,7 @@
 
 namespace Micseres\PhpServer\ConnectionPool;
 
+use Micseres\PhpServer\Response\ErrorResponse;
 use Micseres\PhpServer\Response\TaskResultResponse;
 use Micseres\PhpServer\Server;
 use Micseres\PhpServer\Task\Task;
@@ -58,7 +59,7 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     /**
      * @return bool
      */
-    public function isBusy(): bool
+    public function isWaitTaskData(): bool
     {
         return (null !== $this->currentTask);
     }
@@ -93,7 +94,7 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
      */
     public function startTask(TaskInterface $task)
     {
-        if ($this->isBusy()) {
+        if ($this->isWaitTaskData()) {
             throw new \RuntimeException("Connection already has a task in process");
         }
 
@@ -114,15 +115,41 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     /**
      * @param string $data
      */
-    public function finishTask(string $data)
+    public function finishTask(string $data): void
     {
         $task = $this->getCurrentTask();
+
         $this->postDispatch($task);
 
         $response          = new TaskResultResponse($task, $data);
         $this->currentTask = null;
 
         $this->server->send($task->getClientId(), $response);
+
+        Server::getLogger()->info(
+            "FRONT: send service response {$task->getStringParams()}",
+            [
+                'microservice' => $this->getId(),
+                'data'         => $task->getStringParams(),
+            ]
+        );
+    }
+
+    public function rejectTask(): void
+    {
+        $task = $this->getCurrentTask();
+        $this->currentTask = null;
+
+        $response = new ErrorResponse($task, 'Service can`t process request correctly');
+        $this->server->send($task->getClientId(), $response);
+
+        Server::getLogger()->info(
+            "FRONT: reject service response {$task->getStringParams()}",
+            [
+                'microservice' => $this->getId(),
+                'data'         => $task->getStringParams(),
+            ]
+        );
     }
 
     protected function postDispatch(Task $task)
