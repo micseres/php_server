@@ -10,7 +10,7 @@ use Micseres\PhpServer\ConnectionPool\BackConnection;
 use Micseres\PhpServer\ConnectionPool\BackConnectionInterface;
 use Micseres\PhpServer\Exception\ConnectionAlreadyAddedException;
 use Micseres\PhpServer\Exception\PoolNotExistsException;
-use Micseres\PhpServer\Exception\RouteIsEmptyException;
+use Micseres\PhpServer\Task\TaskInterface;
 
 /**
  * Class Route
@@ -23,6 +23,9 @@ class Route implements \JsonSerializable
 
     /** @var BackConnectionInterface[] */
     private $connections = [];
+
+    /** @var TaskInterface[]  */
+    private $taskQueue = [];
 
     /**
      * Route constructor.
@@ -53,25 +56,6 @@ class Route implements \JsonSerializable
     public function removeConnection(BackConnection $connection)
     {
         unset($this->connections[$connection->getId()]);
-    }
-
-    /**
-     * @return BackConnectionInterface
-     */
-    public function getLeastLoadedConnection(): BackConnectionInterface
-    {
-        if ($this->isEmpty()) {
-            throw new RouteIsEmptyException();
-        }
-        return array_reduce(
-            $this->connections,
-            function (?BackConnectionInterface $carry, BackConnectionInterface $connectionPool) {
-                if ($carry !== null && ($carry->getLoading() < $connectionPool->getLoading())) {
-                    return $carry;
-                }
-                return $connectionPool;
-            }
-        );
     }
 
     /**
@@ -124,5 +108,34 @@ class Route implements \JsonSerializable
     public function jsonSerialize()
     {
         return $this->connections;
+    }
+
+    public function queueTask(TaskInterface $task)
+    {
+        $this->taskQueue[]=$task;
+        $this->pushTheQueue();
+    }
+
+    public function pushTheQueue()
+    {
+        //check tasks queue
+        if (empty($this->taskQueue)) {
+            return;
+        }
+        //detect free connection to process next task
+        $freeConnection = null;
+        foreach ($this->connections as $connection) {
+            if (!$connection->isBusy()) {
+                $freeConnection = $connection;
+                break;
+            }
+        }
+
+        if ($freeConnection === null) {
+            return;
+        }
+        //extract task from queue and put it in connection
+        $task = array_shift($this->taskQueue);
+        $freeConnection->startTask($task);
     }
 }

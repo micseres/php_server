@@ -47,12 +47,7 @@ class QueueTask implements RequestHandlerInterface
         }
 
         $task     = new Task($request->getClientId(), $request->getPayload());
-        $connection = $route->getLeastLoadedConnection();
-        $connection->addTask($task);
-
-        if (!$connection->hasOpenTask()) {
-            $connection->startNext();
-        }
+        $route->queueTask($task);
 
         $response = new TaskResponse($task, 'Request accepted');
 
