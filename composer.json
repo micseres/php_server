@@ -27,7 +27,8 @@
     "ext-mcrypt": "*",
     "ext-openssl": "*",
     "symfony/dotenv": "^4.1",
-    "monolog/monolog": "^1.23"
+    "monolog/monolog": "^1.23",
+    "micseres/micro-service-dh": "dev-master"
   },
   "require-dev": {
     "eaglewu/swoole-ide-helper": "dev-master"
