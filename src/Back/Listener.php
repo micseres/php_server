@@ -170,6 +170,7 @@ class Listener
         if (!$this->pool->hasConnection($connectionId)) {
             return;
         }
+
         /** @var BackConnection $connection */
         $connection = $this->pool->getConnection($connectionId);
 

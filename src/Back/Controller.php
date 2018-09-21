@@ -59,7 +59,7 @@ class Controller
      */
     private function registerAction(BackConnection $connection, array $params): string
     {
-        $routePath = $params['route']??null;
+        $routePath = $params['route'] ?? null;
 
         if (null === $routePath) {
             throw new \RuntimeException("route is required");
