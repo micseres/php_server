@@ -15,24 +15,17 @@ use Micseres\PhpServer\Task\TaskInterface;
 interface BackConnectionInterface
 {
     /**
-     * @param TaskInterface $task
-     */
-    public function addTask(TaskInterface $task);
-
-    /**
-     * @return float
-     */
-    public function getLoading(): float ;
-
-    /**
-     *
-     */
-    public function startNext();
-
-    /**
      * @return bool
      */
-    public function hasOpenTask(): bool;
+    public function isBusy(): bool;
 
-    public function getTasks(): array;
+    /**
+     * @param TaskInterface $task
+     */
+    public function startTask(TaskInterface $task);
+
+    /**
+     * @param string $data
+     */
+    public function finishTask(string $data);
 }
