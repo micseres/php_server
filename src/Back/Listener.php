@@ -9,7 +9,6 @@ namespace Micseres\PhpServer\Back;
 use Micseres\PhpServer\ConnectionPool\BackConnection;
 use Micseres\PhpServer\ConnectionPool\BackConnectionPool;
 use Micseres\PhpServer\Response\ErrorResponse;
-use Micseres\PhpServer\Response\TaskResultResponse;
 use Micseres\PhpServer\Router\Router;
 use Micseres\PhpServer\Server;
 
@@ -120,34 +119,23 @@ class Listener
     {
         /** @var BackConnection $connection */
         $connection = $this->pool->getConnection($connectionId);
-
+        $currentTask = null;
         //send fail message to current task
-        if ($connection->hasOpenTask()) {
-            $task = $connection->getCurrentTask();
-            $response = new ErrorResponse($connection->getCurrentTask(), "microserver closed connection");
-            $server->send($task->getClientId(), $response);
+        if ($connection->isBusy()) {
+            $currentTask = $connection->getCurrentTask();
         }
 
         $route = $this->router->getRouteByConnection($connection);
+
         if (null !== $route) {
             $route->removeConnection($connection);
 
-            //if we have no more microservers on this route, sent error to client and destroy route
             if ($route->isEmpty()) {
                 $this->router->unsetRoute($route->getPath());
-                foreach ($connection->getTasks() as $task) {
-                    $response = new ErrorResponse(
-                        $connection->getCurrentTask(),
-                        "microserver closed connection"
-                    );
-                    $server->send($task->getClientId(), $response);
-                }
-                //else if we have microservices - put tasks in they
+                $response = new ErrorResponse($connection->getCurrentTask(), "microserver closed connection");
+                $server->send($currentTask->getClientId(), $response);
             } else {
-                foreach ($connection->getTasks() as $task) {
-                    $target = $route->getLeastLoadedConnection();
-                    $target->addTask($task);
-                }
+                $route->queueTask($currentTask);
             }
         }
 
@@ -176,17 +164,20 @@ class Listener
         if ($this->detectCommandMessage($data)) {
             $response = $this->handleCommandMessage($connection, $data);
             $this->server->send($connectionId, $response);
-            Server::getLogger()->info("BACK: command response {$response}", $server->connection_info($connectionId, $reactorId) ?? []);
+            Server::getLogger()->info(
+                "BACK: command response {$response}",
+                $server->connection_info($connectionId, $reactorId) ?? []
+            );
         }
 
-        if ($connection->hasOpenTask()) {
-            $iv_size = openssl_cipher_iv_length($algo = getenv('ENCRYPT_ALGO'));
-            $iv = substr(md5($key = getenv('ENCRYPT_KEY')), 0, $iv_size);
-            $data = openssl_decrypt($data, $algo, $key,  0, $iv);
-            $task = $connection->getCurrentTask();
-            $response = new TaskResultResponse($task, $data);
-            $this->server->send($task->getClientId(), $response);
-            $connection->startNext();
+        if ($connection->isBusy()) {
+            $iVectorSize = openssl_cipher_iv_length($algo = getenv('ENCRYPT_ALGO'));
+            $iVector = substr(md5($key = getenv('ENCRYPT_KEY')), 0, $iVectorSize);
+            $data = openssl_decrypt($data, $algo, $key, 0, $iVector);
+            $connection->finishTask($data);
+
+            $this->router->getRouteByConnection($connection)->pushTheQueue();
+
             Server::$total++;
         }
     }
