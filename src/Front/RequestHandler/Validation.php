@@ -24,7 +24,7 @@ class Validation implements RequestHandlerInterface
      */
     public function handle($request, \Closure $next)
     {
-        $action = $request->action ?? null;
+        $action = $request->route ?? null;
 
         if (empty($action)) {
             Server::getLogger()->warning('Action is mandatory', (array)$request);

@@ -36,19 +36,20 @@ class QueueTask implements RequestHandlerInterface
      */
     public function handle($request, ?\Closure $next = null): Response
     {
-        $action = $request->getAction();
+        $route = $request->getRoute();
 
         try {
-            $route = $this->router->getRoute($action);
+            $route = $this->router->getRoute($route);
         } catch (RouteNotExistsException $exception) {
             $response = new Response($exception->getMessage(), Response::STATUS__FAIL);
 
             return $response;
         }
 
-        $task     = new Task($request->getClientId(), $request->getParams());
+        $task     = new Task($request->getClientId(), $request->getPayload());
         $connection = $route->getLeastLoadedConnection();
         $connection->addTask($task);
+
         if (!$connection->hasOpenTask()) {
             $connection->startNext();
         }

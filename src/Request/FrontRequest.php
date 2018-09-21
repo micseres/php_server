@@ -11,8 +11,8 @@ use Micseres\PhpServer\Exception\InvalidRequestException;
 /**
  * Class FrontRequest
  * @package Micseres\PhpServer\Request
- * @property string $action
- * @property array $params
+ * @property string $route
+ * @property array $payload
  */
 class FrontRequest implements RequestInterface
 {
@@ -40,14 +40,14 @@ class FrontRequest implements RequestInterface
         }
     }
 
-    public function getAction(): string
+    public function getRoute(): string
     {
-        return $this->action;
+        return $this->route;
     }
 
-    public function getParams(): array
+    public function getPayload(): array
     {
-        return $this->params;
+        return $this->payload;
     }
 
     /**

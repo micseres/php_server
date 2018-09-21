@@ -19,7 +19,11 @@ services:
      - SOCKET_SYSTEM_TYPE=tcp
      - SOCKET_SYSTEM_HOST=0.0.0.0
      - SOCKET_SYSTEM_PORT=9503
+     - ENCRYPT_KEY=pass
+     - ENCRYPT_ALGO=aes128
     networks:
+      erp:
+        ipv4_address: 10.7.0.101
       hub:
         ipv4_address: 10.5.0.101
     volumes:
@@ -139,5 +143,7 @@ services:
 
 networks:
   hub:
+    external: true
+  erp:
     external: true
 #docker network create --gateway 10.5.0.1 --subnet 10.5.0.0/24 hub
