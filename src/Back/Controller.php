@@ -6,6 +6,7 @@
 
 namespace Micseres\PhpServer\Back;
 
+use Micseres\MicroServiceDH\DiffieHellman;
 use Micseres\PhpServer\ConnectionPool\BackConnection;
 use Micseres\PhpServer\Exception\ConnectionAlreadyAddedException;
 use Micseres\PhpServer\Router\Route;
@@ -19,15 +20,21 @@ class Controller
 {
     /** @var Router  */
     private $router;
+    /**
+     * @var DiffieHellman
+     */
+    private $dh;
 
     /**
      * Controller constructor.
      *
      * @param Router $router
+     * @param DiffieHellman $dh
      */
-    public function __construct(Router $router)
+    public function __construct(Router $router, DiffieHellman $dh)
     {
         $this->router = $router;
+        $this->dh = $dh;
     }
 
     /**
@@ -53,9 +60,10 @@ class Controller
     /**
      * @used-by dispatch()
      * @param BackConnection $connection
-     * @param array          $params
+     * @param array $params
      *
      * @return string
+     * @throws \Micseres\MicroServiceDH\Exception\DiffieHellmanException
      */
     private function registerAction(BackConnection $connection, array $params): string
     {
@@ -80,18 +88,13 @@ class Controller
 
 
         if (isset($params['public_key'])) {
-            $args = [];
-            $args['p'] = hex2bin($params['p']);
-            $args['g'] = hex2bin($params['g']);
-            $private_key = openssl_pkey_new(['dh' => $args]);
-            $details = openssl_pkey_get_details($private_key);
-
-            $connection->setSharedKey(bin2hex(openssl_dh_compute_key(hex2bin($params['public_key']), $private_key)));
+            $this->dh->generatePrimaryAsSlave($params['p'], $params['g']);
+            $connection->setSharedKey($this->dh->getSharedKey($params['public_key']));
 
             return json_encode([
                 'status' => 'OK',
                 'payload' => [
-                    'public_key' => bin2hex($details['dh']['pub_key'])
+                    'public_key' =>  $this->dh->getPublicKey()
                 ]
             ]);
         }

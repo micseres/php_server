@@ -6,6 +6,7 @@
 
 namespace Micseres\PhpServer;
 
+use Micseres\MicroServiceDH\DiffieHellman;
 use Micseres\PhpServer\Back;
 use Micseres\PhpServer\Front;
 use Micseres\PhpServer\ConnectionPool\BackConnectionPool;
@@ -51,7 +52,7 @@ class Server
         $systemController = new System\Controller($router);
         $this->systemListener = new System\Listener($server, $systemController);
         $backPool = new BackConnectionPool($server);
-        $backController = new Back\Controller($router);
+        $backController = new Back\Controller($router, new DiffieHellman(false));
         $this->backListener = new Back\Listener($server, $backPool, $router, $backController);
 
 
