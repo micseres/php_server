@@ -6,6 +6,8 @@
 
 namespace Micseres\PhpServer\ConnectionPool;
 
+use Micseres\MicroServiceEncrypt\Exception\EncryptException;
+use Micseres\MicroServiceEncrypt\OpenSSLEncrypt;
 use Micseres\PhpServer\Response\ErrorResponse;
 use Micseres\PhpServer\Response\TaskResultResponse;
 use Micseres\PhpServer\Server;
@@ -35,17 +37,23 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
 
     /** @var string|null */
     private $sharedKey;
+    /**
+     * @var OpenSSLEncrypt
+     */
+    private $encrypt;
 
     /**
      * ConnectionPool constructor.
      *
      * @param \swoole_server $server
-     * @param int            $identity
+     * @param int $identity
+     * @param OpenSSLEncrypt $encrypt
      */
-    public function __construct(\swoole_server $server, int $identity)
+    public function __construct(\swoole_server $server, int $identity, OpenSSLEncrypt $encrypt)
     {
         $this->server     = $server;
         $this->identifier = (string)$identity;
+        $this->encrypt = $encrypt;
     }
 
     /**
@@ -155,15 +163,14 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     /**
      * @param string $data
      * @return null|array
+     * @throws EncryptException
      */
     public function decodeData(string $data): ?array
     {
         $data = preg_replace('~[\r\n]+~', '', $data);
 
         if (null !== $this->getSharedKey()) {
-            $iVectorSize = openssl_cipher_iv_length($algo = getenv('ENCRYPT_ALGO'));
-            $iVector = substr($this->getSharedKey(), 0, $iVectorSize);
-            $data = openssl_decrypt(hex2bin($data), $algo, $this->getSharedKey(), 0, $iVector);
+            $data = $this->encrypt->decrypt($data);
         }
 
         $data = json_decode($data, true);
@@ -191,9 +198,11 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
 
     /**
      * @param null|string $sharedKey
+     * @throws EncryptException
      */
     public function setSharedKey(?string $sharedKey): void
     {
         $this->sharedKey = $sharedKey;
+        $this->encrypt->setPassword($sharedKey);
     }
 }

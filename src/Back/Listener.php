@@ -6,6 +6,8 @@
 
 namespace Micseres\PhpServer\Back;
 
+use Micseres\MicroServiceEncrypt\Exception\EncryptException;
+use Micseres\MicroServiceEncrypt\OpenSSLEncrypt;
 use Micseres\PhpServer\ConnectionPool\BackConnection;
 use Micseres\PhpServer\ConnectionPool\BackConnectionPool;
 use Micseres\PhpServer\Response\ErrorResponse;
@@ -99,14 +101,15 @@ class Listener
 
     /**
      * @param \swoole_server $server
-     * @param int            $connectionId
-     * @param int            $fromId
+     * @param int $connectionId
+     * @param int $fromId
+     * @throws EncryptException
      */
     public function onConnect(\swoole_server $server, int $connectionId, int $fromId)
     {
         Server::getLogger()->info('BACK: connection open', $server->connection_info($connectionId, $fromId) ?? []);
 
-        $connection = new BackConnection($server, $connectionId);
+        $connection = new BackConnection($server, $connectionId, new OpenSSLEncrypt(getenv('ENCRYPT_ALGO')));
         $this->pool->addConnection($connection);
     }
 
@@ -147,9 +150,10 @@ class Listener
 
     /**
      * @param \swoole_server $server
-     * @param int            $connectionId
-     * @param int            $reactorId
-     * @param string         $data
+     * @param int $connectionId
+     * @param int $reactorId
+     * @param string $data
+     * @throws EncryptException
      */
     public function onReceive(\swoole_server $server, int $connectionId, int $reactorId, string $data)
     {
