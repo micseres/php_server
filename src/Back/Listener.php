@@ -162,19 +162,11 @@ class Listener
         /** @var BackConnection $connection */
         $connection = $this->pool->getConnection($connectionId);
 
-        $data = preg_replace('~[\r\n]+~', '', $data);
-
-        if (null !== $connection->getSharedKey()) {
-            $iVectorSize = openssl_cipher_iv_length($algo = getenv('ENCRYPT_ALGO'));
-            $iVector = substr($connection->getSharedKey(), 0, $iVectorSize);
-            $data = openssl_decrypt(hex2bin($data), $algo, $connection->getSharedKey(), 0, $iVector);
-        }
-
-        $data = json_decode($data, true);
+        $data = $connection->decodeData($data);
 
         if (null === $data) {
             $connection->rejectTask();
-            $server->resume($connectionId);
+            $this->server->resume($connectionId);
 
             return;
         }
@@ -182,6 +174,7 @@ class Listener
         if ($this->detectCommandMessage($data)) {
             $response = $this->handleCommandMessage($connection, $data);
             $this->server->send($connectionId, $response);
+
             Server::getLogger()->info(
                 "BACK: command response {$response}",
                 $server->connection_info($connectionId, $reactorId) ?? []

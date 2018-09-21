@@ -152,6 +152,25 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
         );
     }
 
+    /**
+     * @param string $data
+     * @return null|array
+     */
+    public function decodeData(string $data): ?array
+    {
+        $data = preg_replace('~[\r\n]+~', '', $data);
+
+        if (null !== $this->getSharedKey()) {
+            $iVectorSize = openssl_cipher_iv_length($algo = getenv('ENCRYPT_ALGO'));
+            $iVector = substr($this->getSharedKey(), 0, $iVectorSize);
+            $data = openssl_decrypt(hex2bin($data), $algo, $this->getSharedKey(), 0, $iVector);
+        }
+
+        $data = json_decode($data, true);
+
+        return $data;
+    }
+
     protected function postDispatch(Task $task)
     {
         $duration = microtime(true) - $task->getStartTime();

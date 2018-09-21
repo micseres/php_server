@@ -81,7 +81,7 @@ class Server
                 $socket = '/var/run/micseres/sys.sock';
             }
 
-            return new \swoole_server($socket, 0, SWOOLE_BASE, SWOOLE_UNIX_STREAM);
+            return new \swoole_server($socket, 0, SWOOLE_PROCESS, SWOOLE_UNIX_STREAM);
         }
 
         $host = getenv('SOCKET_SYSTEM_HOST');
