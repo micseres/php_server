@@ -6,6 +6,9 @@
 
 namespace Micseres\PhpServer\ConnectionPool;
 
+use Micseres\MicroServiceEncrypt\Exception\EncryptException;
+use Micseres\MicroServiceEncrypt\OpenSSLEncrypt;
+use Micseres\PhpServer\Response\ErrorResponse;
 use Micseres\PhpServer\Response\TaskResultResponse;
 use Micseres\PhpServer\Server;
 use Micseres\PhpServer\Task\Task;
@@ -32,16 +35,25 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     /** @var float */
     private $averageDuration = 0;
 
+    /** @var string|null */
+    private $sharedKey;
+    /**
+     * @var OpenSSLEncrypt
+     */
+    private $encrypt;
+
     /**
      * ConnectionPool constructor.
      *
      * @param \swoole_server $server
-     * @param int            $identity
+     * @param int $identity
+     * @param OpenSSLEncrypt $encrypt
      */
-    public function __construct(\swoole_server $server, int $identity)
+    public function __construct(\swoole_server $server, int $identity, OpenSSLEncrypt $encrypt)
     {
         $this->server     = $server;
         $this->identifier = (string)$identity;
+        $this->encrypt = $encrypt;
     }
 
     /**
@@ -55,7 +67,7 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     /**
      * @return bool
      */
-    public function isBusy(): bool
+    public function isWaitTaskData(): bool
     {
         return (null !== $this->currentTask);
     }
@@ -90,7 +102,7 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
      */
     public function startTask(TaskInterface $task)
     {
-        if ($this->isBusy()) {
+        if ($this->isWaitTaskData()) {
             throw new \RuntimeException("Connection already has a task in process");
         }
 
@@ -111,15 +123,59 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
     /**
      * @param string $data
      */
-    public function finishTask(string $data)
+    public function finishTask(string $data): void
     {
         $task = $this->getCurrentTask();
+
         $this->postDispatch($task);
 
         $response          = new TaskResultResponse($task, $data);
         $this->currentTask = null;
 
         $this->server->send($task->getClientId(), $response);
+
+        Server::getLogger()->info(
+            "FRONT: send service response {$task->getStringParams()}",
+            [
+                'microservice' => $this->getId(),
+                'data'         => $task->getStringParams(),
+            ]
+        );
+    }
+
+    public function rejectTask(): void
+    {
+        $task = $this->getCurrentTask();
+        $this->currentTask = null;
+
+        $response = new ErrorResponse($task, 'Service can`t process request correctly');
+        $this->server->send($task->getClientId(), $response);
+
+        Server::getLogger()->info(
+            "FRONT: reject service response {$task->getStringParams()}",
+            [
+                'microservice' => $this->getId(),
+                'data'         => $task->getStringParams(),
+            ]
+        );
+    }
+
+    /**
+     * @param string $data
+     * @return null|array
+     * @throws EncryptException
+     */
+    public function decodeData(string $data): ?array
+    {
+        $data = preg_replace('~[\r\n]+~', '', $data);
+
+        if (null !== $this->getSharedKey()) {
+            $data = $this->encrypt->decrypt($data);
+        }
+
+        $data = json_decode($data, true);
+
+        return $data;
     }
 
     protected function postDispatch(Task $task)
@@ -130,5 +186,23 @@ class BackConnection implements ConnectionInterface, BackConnectionInterface, \J
                                  / ($this->tasksProcessed + 1);
 
         $this->tasksProcessed++;
+    }
+
+    /**
+     * @return null|string
+     */
+    public function getSharedKey(): ?string
+    {
+        return $this->sharedKey;
+    }
+
+    /**
+     * @param null|string $sharedKey
+     * @throws EncryptException
+     */
+    public function setSharedKey(?string $sharedKey): void
+    {
+        $this->sharedKey = $sharedKey;
+        $this->encrypt->setPassword($sharedKey);
     }
 }

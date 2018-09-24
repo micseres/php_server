@@ -17,7 +17,7 @@ interface BackConnectionInterface
     /**
      * @return bool
      */
-    public function isBusy(): bool;
+    public function isWaitTaskData(): bool;
 
     /**
      * @param TaskInterface $task

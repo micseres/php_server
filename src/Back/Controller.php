@@ -6,6 +6,7 @@
 
 namespace Micseres\PhpServer\Back;
 
+use Micseres\MicroServiceDH\DiffieHellman;
 use Micseres\PhpServer\ConnectionPool\BackConnection;
 use Micseres\PhpServer\Exception\ConnectionAlreadyAddedException;
 use Micseres\PhpServer\Router\Route;
@@ -19,15 +20,21 @@ class Controller
 {
     /** @var Router  */
     private $router;
+    /**
+     * @var DiffieHellman
+     */
+    private $dh;
 
     /**
      * Controller constructor.
      *
      * @param Router $router
+     * @param DiffieHellman $dh
      */
-    public function __construct(Router $router)
+    public function __construct(Router $router, DiffieHellman $dh)
     {
         $this->router = $router;
+        $this->dh = $dh;
     }
 
     /**
@@ -53,16 +60,19 @@ class Controller
     /**
      * @used-by dispatch()
      * @param BackConnection $connection
-     * @param array          $params
+     * @param array $params
      *
      * @return string
+     * @throws \Micseres\MicroServiceDH\Exception\DiffieHellmanException
      */
     private function registerAction(BackConnection $connection, array $params): string
     {
-        $routePath = $params['route']??null;
+        $routePath = $params['route'] ?? null;
+
         if (null === $routePath) {
             throw new \RuntimeException("route is required");
         }
+
         if (!$this->router->hasRoute($routePath)) {
             $route = new Route($routePath);
             $this->router->addRoute($route);
@@ -76,7 +86,23 @@ class Controller
             return $exception->getMessage();
         }
 
-        return "OK";
+
+        if (isset($params['public_key'])) {
+            $this->dh->generatePrimaryAsSlave($params['p'], $params['g']);
+            $connection->setSharedKey($this->dh->getSharedKey($params['public_key']));
+
+            return json_encode([
+                'status' => 'OK',
+                'payload' => [
+                    'public_key' =>  $this->dh->getPublicKey()
+                ]
+            ]);
+        }
+
+        return json_encode([
+            'status' => 'OK',
+            'payload' => []
+        ]);
     }
 
     /**

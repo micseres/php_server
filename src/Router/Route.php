@@ -122,10 +122,12 @@ class Route implements \JsonSerializable
         if (empty($this->taskQueue)) {
             return;
         }
+
         //detect free connection to process next task
         $freeConnection = null;
+
         foreach ($this->connections as $connection) {
-            if (!$connection->isBusy()) {
+            if (!$connection->isWaitTaskData()) {
                 $freeConnection = $connection;
                 break;
             }
@@ -134,6 +136,7 @@ class Route implements \JsonSerializable
         if ($freeConnection === null) {
             return;
         }
+
         //extract task from queue and put it in connection
         $task = array_shift($this->taskQueue);
         $freeConnection->startTask($task);

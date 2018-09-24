@@ -6,6 +6,8 @@
 
 namespace Micseres\PhpServer\Back;
 
+use Micseres\MicroServiceEncrypt\Exception\EncryptException;
+use Micseres\MicroServiceEncrypt\OpenSSLEncrypt;
 use Micseres\PhpServer\ConnectionPool\BackConnection;
 use Micseres\PhpServer\ConnectionPool\BackConnectionPool;
 use Micseres\PhpServer\Response\ErrorResponse;
@@ -99,14 +101,15 @@ class Listener
 
     /**
      * @param \swoole_server $server
-     * @param int            $connectionId
-     * @param int            $fromId
+     * @param int $connectionId
+     * @param int $fromId
+     * @throws EncryptException
      */
     public function onConnect(\swoole_server $server, int $connectionId, int $fromId)
     {
         Server::getLogger()->info('BACK: connection open', $server->connection_info($connectionId, $fromId) ?? []);
 
-        $connection = new BackConnection($server, $connectionId);
+        $connection = new BackConnection($server, $connectionId, new OpenSSLEncrypt(getenv('ENCRYPT_ALGO')));
         $this->pool->addConnection($connection);
     }
 
@@ -120,22 +123,23 @@ class Listener
         /** @var BackConnection $connection */
         $connection = $this->pool->getConnection($connectionId);
         $currentTask = null;
+
         //send fail message to current task
-        if ($connection->isBusy()) {
+        if ($connection->isWaitTaskData()) {
             $currentTask = $connection->getCurrentTask();
-        }
 
-        $route = $this->router->getRouteByConnection($connection);
+            $route = $this->router->getRouteByConnection($connection);
 
-        if (null !== $route) {
-            $route->removeConnection($connection);
+            if (null !== $route) {
+                $route->removeConnection($connection);
 
-            if ($route->isEmpty()) {
-                $this->router->unsetRoute($route->getPath());
-                $response = new ErrorResponse($connection->getCurrentTask(), "microserver closed connection");
-                $server->send($currentTask->getClientId(), $response);
-            } else {
-                $route->queueTask($currentTask);
+                if ($route->isEmpty()) {
+                    $this->router->unsetRoute($route->getPath());
+                    $response = new ErrorResponse($connection->getCurrentTask(), "microserver closed connection");
+                    $server->send($currentTask->getClientId(), $response);
+                } else {
+                    $route->queueTask($currentTask);
+                }
             }
         }
 
@@ -146,50 +150,62 @@ class Listener
 
     /**
      * @param \swoole_server $server
-     * @param int            $connectionId
-     * @param int            $reactorId
-     * @param string         $data
+     * @param int $connectionId
+     * @param int $reactorId
+     * @param string $data
+     * @throws EncryptException
      */
     public function onReceive(\swoole_server $server, int $connectionId, int $reactorId, string $data)
     {
         Server::getLogger()->info("BACK: request {$data}", $server->connection_info($connectionId, $reactorId) ?? []);
-        $data = preg_replace('~[\r\n]+~', '', $data);
 
         if (!$this->pool->hasConnection($connectionId)) {
             return;
         }
+
         /** @var BackConnection $connection */
         $connection = $this->pool->getConnection($connectionId);
+
+        $data = $connection->decodeData($data);
+
+        if (null === $data) {
+            $connection->rejectTask();
+            $this->server->resume($connectionId);
+
+            return;
+        }
 
         if ($this->detectCommandMessage($data)) {
             $response = $this->handleCommandMessage($connection, $data);
             $this->server->send($connectionId, $response);
+
             Server::getLogger()->info(
                 "BACK: command response {$response}",
                 $server->connection_info($connectionId, $reactorId) ?? []
             );
+
+            return;
         }
 
-        if ($connection->isBusy()) {
-            $iVectorSize = openssl_cipher_iv_length($algo = getenv('ENCRYPT_ALGO'));
-            $iVector = substr(md5($key = getenv('ENCRYPT_KEY')), 0, $iVectorSize);
-            $data = openssl_decrypt($data, $algo, $key, 0, $iVector);
-            $connection->finishTask($data);
+        if ($connection->isWaitTaskData()) {
+            if (isset($data['payload']['apiKey']) && $data['payload']['apiKey'] === getenv('API_KEY')) {
+                $connection->finishTask($data['payload']['data']);
+                $this->router->getRouteByConnection($connection)->pushTheQueue();
 
-            $this->router->getRouteByConnection($connection)->pushTheQueue();
+                Server::$total++;
 
-            Server::$total++;
+                return;
+            }
         }
     }
 
     /**
-     * @param string $data
+     * @param array $data
      * @return bool
      */
-    private function detectCommandMessage(string $data): bool
+    private function detectCommandMessage(array $data): bool
     {
-        $request = json_decode($data, true);
-        $route = $request['route']??'';
+        $route = $data['route'] ?? '';
 
         if ($route === 'system') {
             return true;
@@ -200,22 +216,13 @@ class Listener
 
     /**
      * @param BackConnection $connection
-     * @param string         $data
+     * @param array $data
      *
      * @return      string
      */
-    private function handleCommandMessage(BackConnection $connection, string $data): string
+    private function handleCommandMessage(BackConnection $connection, array $data): string
     {
-        $request = json_decode($data, true);
-
-        if (null === $request) {
-            $message = "Invalid JSON format message\n ";
-            $message .= 'try { "action": "help"} to help'."\n";
-
-            return $message;
-        }
-
-        $payload = $request['payload']??[];
+        $payload = $data['payload'] ?? [];
 
         if (!isset($payload['action'])) {
             return "Action is mandatory\n";
