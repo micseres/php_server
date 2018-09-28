@@ -127,19 +127,19 @@ class Listener
         //send fail message to current task
         if ($connection->isWaitTaskData()) {
             $currentTask = $connection->getCurrentTask();
+        }
 
-            $route = $this->router->getRouteByConnection($connection);
-
-            if (null !== $route) {
-                $route->removeConnection($connection);
-
-                if ($route->isEmpty()) {
-                    $this->router->unsetRoute($route->getPath());
+        $route = $this->router->getRouteByConnection($connection);
+        if (null !== $route) {
+            $route->removeConnection($connection);
+            if ($route->isEmpty()) {
+                $this->router->unsetRoute($route->getPath());
+                if (null !== $currentTask) {
                     $response = new ErrorResponse($connection->getCurrentTask(), "microserver closed connection");
                     $server->send($currentTask->getClientId(), $response);
-                } else {
-                    $route->queueTask($currentTask);
                 }
+            } else {
+                $route->queueTask($currentTask);
             }
         }
 
