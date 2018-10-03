@@ -10,6 +10,6 @@ namespace Micseres\PhpServer\Exception;
  * Class ConnectionNotExistsException
  * @package Micseres\PhpServer\Exception
  */
-class ConnectionNotExistsException extends \RuntimeException
+class ConnectionNotExistsException extends MicseresException
 {
 }

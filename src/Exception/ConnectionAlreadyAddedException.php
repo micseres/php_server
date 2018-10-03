@@ -7,9 +7,9 @@
 namespace Micseres\PhpServer\Exception;
 
 /**
- * Class PollAlreayExistsException
+ * Class ConnectionAlreadyAddedException
  * @package Micseres\PhpServer\Exception
  */
-class ConnectionAlreadyAddedException extends RouterException
+class ConnectionAlreadyAddedException extends MicseresException
 {
 }

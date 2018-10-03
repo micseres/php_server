@@ -10,6 +10,6 @@ namespace Micseres\PhpServer\Exception;
  * Class RouterException
  * @package Micseres\PhpServer\Exception
  */
-class RouterException extends \RuntimeException
+class RouterException extends MicseresException
 {
 }
