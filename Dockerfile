@@ -7,6 +7,9 @@ RUN apk add --no-cache libmcrypt libmcrypt-dev gcc g++ autoconf make
 RUN pecl install mcrypt-1.0.1
 RUN echo extension=mcrypt.so > /usr/local/etc/php/conf.d/mcrypt.ini
 
+RUN  docker-php-ext-configure sockets --with-libdir=lib/x86_64-linux-gnu/ \
+    && docker-php-ext-install sockets
+
 WORKDIR /app
 COPY composer.json ./
 RUN composer install --no-dev
