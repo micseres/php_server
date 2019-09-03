@@ -26,8 +26,6 @@ services:
         ipv4_address: 10.7.0.101
       hub:
         ipv4_address: 10.5.0.101
-    volumes:
-      - ./:/app
 #
 #  client1:
 #    build: ./test/client
